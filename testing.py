@@ -383,3 +383,4 @@ if __name__ == '__main__':
 # what is going on? Im not sure
 
 # just testing this so I know whats going on
+# okay this is a different version now is it okay?
