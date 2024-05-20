@@ -381,3 +381,5 @@ if __name__ == '__main__':
     start_server(routes, port=8080, host='localhost', debug=True)
 
 # what is going on? Im not sure
+
+# just testing this so I know whats going on
