@@ -1,16 +1,36 @@
 # This is a sample Python script.
+from pywebio.input import *
+from pywebio.output import *
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+put_markdown("# Covid Symptoms Checker #")
 
+symptoms = ['Fever', 'Cough', 'Headache', 'Sore Throat', 'New loss of taste or smell']
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+controls = [
+    checkbox("Symptoms", options=symptoms, name="symptoms"),
+    slider("Temperature", value=37, min_value=30, max_value=45, name="temp"),
+    actions('Is this Covid?', ['Check for Covid', ], name="action")
+]
 
+result = input_group("Symptoms", controls)
+temp = result['temp']
+cough = 'Cough' in (result['symptoms'])
+smellLoss = 'New loss of taste or smell' in (result['symptoms'])
+headache = 'Headache' in (result['symptoms'])
+soreThroat = 'Sore Throat' in (result['symptoms'])
+fever = 'Fever' in (result['symptoms'])
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+print(f'{temp=}, {cough=}, {smellLoss=} {headache=}, {soreThroat=}, {fever=}')
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if temp < 32:
+    toast(f'Looks like you might be dead', 6)
+    message = """You might be a vampire or your thermometer is broken."""
+elif temp > 38 and (cough or smellLoss or headache or soreThroat or fever):
+    toast(f'Looks like you have have Covid', 6)
+    message = """
+        Take a Covid-19 test. Stay home, isolate yourself. Notify close contacts.
+        """
+else:
+    message = """You're fine get back to work!"""
+
+put_markdown(message)
