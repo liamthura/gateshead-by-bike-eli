@@ -379,3 +379,5 @@ if __name__ == '__main__':
         'dark': toggle_dark_mode
     }
     start_server(routes, port=8080, host='localhost', debug=True)
+
+# what is going on? Im not sure
