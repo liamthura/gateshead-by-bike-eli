@@ -1,0 +1,6 @@
+pywebio==1.8.3
+SQLAlchemy==2.0.30
+tornado==6.4
+typing_extensions==4.11.0
+ua-parser==0.18.0
+user-agents==2.2.0
