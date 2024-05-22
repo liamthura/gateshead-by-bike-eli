@@ -454,12 +454,35 @@ def get_threads(user_id=None):
             ''').style('margin-bottom: 10px;')
             put_row([
                 # TODO Add comment function here
-                put_column([put_buttons(['Leave a Comment'], onclick=[main], small=True)]),
+                put_column([put_buttons(['Leave a Comment'], onclick=[create_comment], small=True)]),
                 put_column([threadBtnGroup]).style('justify-content: end;')
             ]).style('margin-bottom: 20px;')
 
         if threadCount > 10:
             put_html(f'<p class="text-center">View more threads</p>')
+
+
+def create_comment():
+    global valid_user
+
+    # if valid_user is None:
+    #     toast(f'You need to login to comment', color='warning')
+    #     user_login()
+    # else:
+    #     put_input('comment', label='testing')
+
+    popup(
+        'Leave a Comment',
+        [
+            put_input('title', label='Comment Title', help_text='Optional'),
+            put_textarea('comment', label='Comment', rows=3),
+            put_buttons([
+                {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
+                {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
+            ], onclick=[main, forum_feeds])
+        ],
+        closable=True
+    )
 
 
 def create_thread():
