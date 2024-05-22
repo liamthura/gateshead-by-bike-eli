@@ -1,12 +1,16 @@
 import sqlalchemy as sa
+import re
 from pywebio import *
+from pywebio.pin import *
 from pywebio.input import *
 from pywebio.output import *
 from pywebio.session import run_js
-from sqlalchemy import Integer, ForeignKey
+from functools import partial
+from sqlalchemy import ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
+from typing import Optional
 
 # Creating a SQL Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -39,8 +43,8 @@ class Role(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(unique=True)
-    users: Mapped[list["User"]] = relationship("User", back_populates="role_id")
-    avatar_url: Mapped[str]
+    # users: Mapped[list["User"]] = relationship("User", back_populates="role_id")
+    avatar_url: Mapped[Optional[str]]
 
     # Structuring output of Role object for better readability
     def __repr__(self):
@@ -57,7 +61,8 @@ class ParkingPost(Base):
     location: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
-    ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
+
+    # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
     def __repr__(self):
         return f"<ParkingPost(id={self.id}, user_id={self.user_id}, location={self.location})>"
@@ -72,7 +77,7 @@ class ParkingRating(Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     rating: Mapped[int]
-    comment: Mapped[str]
+    comment: Mapped[Optional[str]]
 
     def __repr__(self):
         return f"<ParkingRating(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, rating={self.rating})>"
@@ -135,51 +140,189 @@ class CrimeReport(Base):
 
 Base.metadata.create_all(db)
 
+# defining global variables to keep track of font size changes
 smaller_font_clicks = 0
 bigger_font_clicks = 0
+
+# define a global variable to store the dark mode status
 dark_mode = False
-dark_mode_css = """
-            <div style="display: none">
-                <style>
-                    body, .footer {background-color: #333; color: white;}
-                    footer {margin-top: auto;}
-                    div {background-color: #444; color: white}
-                    #input-cards, #input-container  {background-color: #444; white}
-                    .card-header, .card-footer {background-color: #4a4a4a;}
-                </style>
-            </div>
-"""
+
+# define a global variable to store if the user has a valid login
+valid_user = None
+
+
+def user_login(username=None, password=None):
+    clear()  # to clear previous data if there is
+
+    def validate_username(username):
+        if re.match("^[a-zA-Z0-9_.-]+$", username) is None:
+            return f'Username can only contain letters, numbers, ".", "_" and "-"'
+
+    generate_header()
+    put_button('Back to Homepage', onclick=lambda: main(), color='secondary').style('float:right')
+    put_html("<h2>Login</h2>")
+
+    # Defining form fields
+    loginFields = [
+        input("Username", name='name', required=True, validate=validate_username, value=username),
+        input("Password", type=PASSWORD, name='password', value=password, required=True),
+        actions("", [
+            {'label': 'Login', 'value': 'login', 'type': 'submit'},
+            {'label': 'Register', 'value': 'register', 'type': 'submit', 'color': 'secondary'},
+        ], name="user_action"),
+    ]
+
+    data = input_group("User Log In", loginFields, cancelable=True)
+
+    if data is None:
+        toast('Login not performed', color='warning')
+        user_login()
+    elif data['user_action'] == 'register':
+        add_user(data)
+    elif data['user_action'] == 'login':
+        verify_user(data['name'], data['password'])
+
+
+def add_user(user_data):
+    clear()
+
+    def validate_passwords(password, confirm_password):
+        if password != confirm_password:
+            return 'Passwords do not match'
+
+    generate_header()
+    put_button('Back to Homepage', onclick=lambda: main(), color='secondary').style('float:right')
+    put_html("<h2>Register</h2>")
+    try:
+        with Session() as sesh:
+            user_exists = sesh.query(User).filter_by(username=user_data['name']).first()
+            if user_exists is not None:
+                raise ValueError('User already exists')
+
+            registration_fields = [
+                input('Username', name='name', required=True, readonly=True, value=user_data['name']),
+                input('Display Name', name='display_name', required=True),
+                input('Password', type=PASSWORD, name='password', required=True, value=user_data['password'],
+                      readonly=True),
+                input('Confirm password', type=PASSWORD, name='confirm_password', required=True,
+                      validate=partial(validate_passwords, user_data['password'])),
+                radio("User Role", options=[
+                    {'label': 'Standard User', 'value': 1, 'selected': True},
+                    {'label': 'Power User', 'value': 2},
+                    {'label': 'Police Staff', 'value': 3},
+                    {'label': 'Council Staff', 'value': 4}
+                ], name='user_role', required=True)
+            ]
+
+            registration_data = input_group('Registration', registration_fields, cancelable=True)
+            if registration_data is None:
+                raise ValueError('Registration cancelled')
+            if registration_data['password'] != registration_data['confirm_password']:
+                toast(f'Passwords do not match', color='error')
+                add_user(user_data)
+            else:
+                new_user = User(username=user_data['name'], password=registration_data['password'],
+                                display_name=registration_data['display_name'], role_id=registration_data['user_role'])
+                sesh.add(new_user)
+                sesh.commit()
+                print(sesh.query(User).all())
+    except SQLAlchemyError:
+        toast(f'An error occurred', color='error')
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    else:
+        toast(f'User added, please login with new credentials', color='success')
+    finally:
+        user_login()
+
+
+def verify_user(username, password):
+    clear()
+    global valid_user
+    try:
+        with Session() as sesh:
+            valid_user = sesh.query(User).filter_by(username=username).first()
+    except SQLAlchemyError:
+        toast(f'An error occurred', color='error')
+    else:
+        if valid_user is None:
+            toast(f'Invalid user', color='error')
+            user_login()
+        elif valid_user.password != password:
+            toast(f'Invalid login, please check your username and password', color='error')
+            user_login()
+        else:
+            main()
+
+
+def get_user_id(username=None):
+    global valid_user
+    if valid_user is not None and username is None:
+        return valid_user.id
+    elif username is not None:
+        with Session() as sesh:
+            selected_user = sesh.query(User).filter_by(username=username).first()
+            return selected_user.id
+    else:
+        return None
+
+
+def user_logout():
+    clear()
+    global valid_user
+    valid_user = None
+    put_success('You have been logged out')
+    main()
 
 
 @use_scope('ROOT')
 def main():
     clear()
     generate_header()
+    generate_nav()
     user_data = {'username': 'khantthura',
                  'date': '12-05-2024',
                  'display_name': 'Khant Thura',
                  'content': 'This is a test content to see if the function is working'}
 
+    user_data1 = {'username': 'thura',
+                  'date': '12-05-2024',
+                  'display_name': 'Thura',
+                  'content': 'This is a test content to see if the function is working'}
+
+    put_html('<h2>Recent Posts</h2>')
     generate_card(user_data)
+    generate_card(user_data1)
 
     # put_buttons(['Login', 'Register'], onclick=[login, register])
 
 
-def edit_content():
+@use_scope('ROOT', clear=True)
+def forum():
     clear()
-    generate_header()
-    user_data = input_group('Edit Content', [
-        textarea('Content', name='content', value='This is a test content to see if the function is working')
-    ], cancelable=True)
 
-    if user_data is None:
-        run_js('window.location.href = "/"')
+    generate_header()
+    generate_nav()
+    put_html('<h2>Community Forum</h2>')
+
+
+@use_scope('ROOT')
+def edit_content():
+    popup('Edit Content', [
+        put_input('pin_name', label='Say Something'),
+        put_button('Submit', onclick=lambda: print(pin.pin_name))
+    ], closable=True)
 
 
 # function that switches between dark and light mode
+# we used pywebio config to save lines of css codes
 def toggle_dark_mode():
     global dark_mode
     dark_mode = not dark_mode
+    if dark_mode:
+        config(theme='dark')
+    else:
+        config(theme='default')
     print(dark_mode)
     run_js('window.location.reload()')
 
@@ -187,7 +330,7 @@ def toggle_dark_mode():
 def smaller_font():
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
-        let allElements = document.querySelectorAll('p,h2,h3,h4,h5,h6');
+        let allElements = document.querySelectorAll('p,h2,h3,h4,h5,h6,label,input');
         allElements.forEach(function(element) {{
             var style = window.getComputedStyle(element, null).getPropertyValue('font-size');
             var currentSize = parseFloat(style);
@@ -208,7 +351,7 @@ def smaller_font():
 def bigger_font():
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
-            let allElements = document.querySelectorAll('p, h2, h3, h4, h5, h6');
+            let allElements = document.querySelectorAll('p, h2, h3, h4, h5, h6,label,input');
             allElements.forEach(function(element) {{
                 var style = window.getComputedStyle(element, null).getPropertyValue('font-size');
                 var currentSize = parseFloat(style);
@@ -227,22 +370,67 @@ def bigger_font():
 
 
 def generate_header():
-    if dark_mode:
-        put_html(dark_mode_css)
     global smaller_font_clicks, bigger_font_clicks
     smaller_font_clicks, bigger_font_clicks = 0, 0
     put_buttons([
-        {'label': '+', 'value': 'bigger', 'color': 'primary'},
-        {'label': '-', 'value': 'smaller', 'color': 'info'},
+        {'label': 'Aa+', 'value': 'bigger', 'color': 'primary'},
+        {'label': 'Aa-', 'value': 'smaller', 'color': 'info'},
         {'label': 'Dark Mode', 'value': 'dark_mode', 'color': 'dark'}
     ], onclick=[bigger_font, smaller_font, toggle_dark_mode]).style(
         'float:right')
     put_html(f'''
         <h1>
         Welcome to GBB-ELI
-        <p class="h5">A parking lot management system for Gateshead Bike Users</p>
+        <p class="h5">A parking lot social platform for Gateshead Bike Users</p>
         </h1>
         ''')
+
+
+def generate_nav():
+    global valid_user
+    if valid_user is None:
+        put_buttons([
+            {'label': 'Login / Register', 'value': 'login', 'color': 'primary'},
+        ], onclick=[user_login]).style("float:right; margin-left:20px; margin-top: -5px;")
+        put_html(f'<p class="lead">Hello, <span class="font-weight-bold">Guest User</span></p>').style('float:right;')
+    else:
+        put_buttons([
+            {'label': 'Logout', 'value': 'login', 'color': 'danger'},
+        ], onclick=[user_logout]).style("float:right; margin-left:20px; margin-top: -5px;")
+        put_markdown(
+            f'<p class="lead">Hello, <span class="font-weight-bold">{valid_user.display_name}</span></p>').style(
+            'float:right;')
+
+    globalNavBtns = [
+        {'label': 'Home', 'value': 'home', 'color': 'primary'},
+        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
+    ]
+
+    if valid_user is not None:
+        if valid_user.role_id == 2:
+            # TODO:  Attach navigation screens here
+            put_buttons([
+                globalNavBtns[0],
+                globalNavBtns[1],
+                {'label': 'Report Incident', 'value': 'report_crime', 'color': 'warning'}
+            ], onclick=[main, forum, main])
+        elif valid_user.role_id == 3:
+            put_buttons([
+                globalNavBtns[0],
+                globalNavBtns[1],
+                {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
+            ], onclick=[main, forum, main])
+        elif valid_user.role_id == 4:
+            put_buttons([
+                globalNavBtns[0],
+                globalNavBtns[1],
+                {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
+            ], onclick=[main, forum, main])
+    else:
+        put_buttons([
+            globalNavBtns[0],
+            globalNavBtns[1]
+        ], onclick=[main, forum])
 
 
 # function to generate a card from post data
@@ -259,11 +447,11 @@ def generate_card(post):
                 <p>{post['content']}.</p>
             </div>
             <div class="card-footer">
-                <a href="/?app=edit"><button class="btn btn-primary">Edit</button></a>
-                <button class="btn btn-danger">Delete</button>
+                <p>By: {post['username']}</p>
             </div>
         </div>
-        ''')
+        ''').style('margin-bottom: 10px;')
+    put_buttons(['Edit', 'Delete'], onclick=[edit_content, main]).style('margin-bottom: 20px;')
 
 
 if __name__ == '__main__':
