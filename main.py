@@ -357,6 +357,27 @@ def main():
     # put_buttons(['Login', 'Register'], onclick=[login, register])
 
 
+def add_rating():
+    # rateLevels = radio("Choose from 1 being the worst and 5 being the best",
+    # options=[1, 2, 3, 4, 5], name='ratingOptions')),
+    popup('Rate this spot',
+          [
+              put_radio('rateLevels', [
+                  {'label': '1', 'value': 1},
+                  {'label': '2', 'value': 2},
+                  {'label': '3', 'value': 3},
+                  {'label': '4', 'value': 4},
+                  {'label': '5', 'value': 5}
+              ], label='Rate this spot', inline=True, help_text='1 - Least helpful, 5 - Most helpful'),
+              put_textarea('pin_name', label='Feedback', placeholder='Say something', rows=2),
+              put_buttons(['Save', 'Cancel'], onclick=[save_rate, main])], closable=True)
+
+
+def save_rate():
+    post_id = get_user_id()
+    pass
+
+
 @use_scope('ROOT', clear=True)
 def forum_feeds():
     clear()
@@ -626,7 +647,7 @@ def generate_card(post):
             </div>
         </div>
         ''').style('margin-bottom: 10px;')
-    put_buttons(['Edit', 'Delete'], onclick=[edit_content, main]).style('margin-bottom: 20px;')
+    put_buttons(['Rate', 'Delete'], onclick=[add_rating, main]).style('margin-bottom: 20px;')
 
 
 def get_user_badge(user_id=None):
