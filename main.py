@@ -44,7 +44,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(unique=True)
     # users: Mapped[list["User"]] = relationship("User", back_populates="role_id")
-    avatar_url: Mapped[Optional[str]]
+    color: Mapped[Optional[str]]
 
     # Structuring output of Role object for better readability
     def __repr__(self):
@@ -90,7 +90,7 @@ class Thread(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str]
     content: Mapped[str]
-    parent_id: Mapped[int] = mapped_column(ForeignKey("threads.id"))
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("threads.id"), nullable=True)
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     up_votes: Mapped[int]
     down_votes: Mapped[int]
@@ -267,11 +267,72 @@ def get_user_id(username=None):
         return None
 
 
+def get_username(user_id=None):
+    global valid_user
+    username = None
+    display_name = None
+    if valid_user is not None and user_id is None:
+        return valid_user.username
+    elif user_id is not None:
+        with Session() as sesh:
+            selected_user = sesh.query(User).filter_by(id=user_id).first()
+            username = selected_user.username
+            display_name = selected_user.display_name
+        return {'username': username, 'display_name': display_name}
+    else:
+        return 'Guest User'
+
+
+def get_role_name(user_id=None):
+    global valid_user
+    if valid_user is not None and user_id is None:
+        with Session() as sesh:
+            selected_user_role = sesh.query(Role).filter_by(id=valid_user.role_id).first()
+            roleName = selected_user_role.name
+        return roleName
+    elif user_id is not None:
+        with Session() as sesh:
+            selected_user_role = sesh.query(Role).join(User, User.role_id == Role.id).filter_by(id=user_id).first()
+            roleName = selected_user_role.name
+        return roleName
+    else:
+        return None
+
+
+def get_role_id(user_id=None):
+    global valid_user
+    if valid_user is not None and user_id is None:
+        return valid_user.role_id
+    elif user_id is not None:
+        with Session() as sesh:
+            selected_user_role = sesh.query(User).filter_by(id=user_id).first()
+            roleId = selected_user_role.role_id
+        return roleId
+    else:
+        return None
+
+
+def get_role_color(role_id=None):
+    global valid_user
+    if valid_user is not None and role_id is None:
+        with Session() as sesh:
+            selected_user_role = sesh.query(Role).filter_by(id=valid_user.role_id).first()
+            roleColor = selected_user_role.color
+        return roleColor
+    elif role_id is not None:
+        with Session() as sesh:
+            selected_user_role = sesh.query(Role).filter_by(id=role_id).first()
+            roleColor = selected_user_role.color
+        return roleColor
+    else:
+        return None
+
+
 def user_logout():
     clear()
     global valid_user
     valid_user = None
-    put_success('You have been logged out')
+    toast(f'You have been logged out')
     main()
 
 
@@ -300,10 +361,76 @@ def main():
 @use_scope('ROOT', clear=True)
 def forum():
     clear()
+    global valid_user
 
     generate_header()
     generate_nav()
+    if valid_user is not None:
+        put_buttons(['Create a new thread'], onclick=[create_thread]).style('float:right; margin-top: 12px;')
     put_html('<h2>Community Forum</h2>')
+
+    get_threads()
+
+
+def get_threads():
+    with Session() as sesh:
+        threadCount = sesh.query(Thread).count()
+        threads = sesh.query(Thread).order_by(Thread.id.desc()).limit(10).all()
+        for thread in threads:
+            threadDateTime = thread.date_time.strftime('%I:%M%p – %d %b, %Y')
+            put_html(f'''
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title" style="margin: 8px 0;">
+                        {thread.title} <br>
+                        <small class="text-body-secondary">By {get_username(thread.user_id)["display_name"]} {get_user_badge(thread.user_id)} at {threadDateTime}</small>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p>{thread.content}</p>
+                </div>
+            </div>
+            ''').style('margin-bottom: 20px;')
+        if threadCount > 10:
+            put_html(f'<p class="text-center">View more threads</p>')
+
+
+def create_thread():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Forum'], onclick=[forum]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Create a new thread</h2>')
+
+    createThreadFields = [
+        input('Title', name='title', required=True),
+        textarea('Content', name='content', required=True),
+        actions('', [
+            {'label': 'Create', 'value': 'create', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel'}
+        ], name='thread_actions')
+    ]
+
+    thread_data = input_group('Create Thread', createThreadFields, cancelable=True)
+    try:
+        if thread_data is None:
+            raise ValueError('Thread creation cancelled')
+        if thread_data['thread_actions'] == 'create':
+            with Session() as sesh:
+                new_thread = Thread(user_id=get_user_id(), title=thread_data['title'], content=thread_data['content'],
+                                    up_votes=0, down_votes=0, flags=0)
+                sesh.add(new_thread)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Thread created successfully', color='success')
+    finally:
+        forum()
 
 
 @use_scope('ROOT')
@@ -396,41 +523,43 @@ def generate_nav():
     else:
         put_buttons([
             {'label': 'Logout', 'value': 'login', 'color': 'danger'},
-        ], onclick=[user_logout]).style("float:right; margin-left:20px; margin-top: -5px;")
-        put_markdown(
-            f'<p class="lead">Hello, <span class="font-weight-bold">{valid_user.display_name}</span></p>').style(
-            'float:right;')
+        ], onclick=[user_logout]).style("float:right; margin-left:20px;")
+        put_html(
+            f'''
+            <p class="lead mb-n2">Hello, <span class="font-weight-bold">{valid_user.display_name}</span></p>
+            {get_user_badge(valid_user.id)}
+            ''').style(
+            'float:right; text-align:right;')
 
     globalNavBtns = [
         {'label': 'Home', 'value': 'home', 'color': 'primary'},
         {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
     ]
 
-    if valid_user is not None:
-        if valid_user.role_id == 2:
-            # TODO:  Attach navigation screens here
-            put_buttons([
-                globalNavBtns[0],
-                globalNavBtns[1],
-                {'label': 'Report Incident', 'value': 'report_crime', 'color': 'warning'}
-            ], onclick=[main, forum, main])
-        elif valid_user.role_id == 3:
-            put_buttons([
-                globalNavBtns[0],
-                globalNavBtns[1],
-                {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-            ], onclick=[main, forum, main])
-        elif valid_user.role_id == 4:
-            put_buttons([
-                globalNavBtns[0],
-                globalNavBtns[1],
-                {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-            ], onclick=[main, forum, main])
-    else:
+    if valid_user is None or valid_user.role_id == 1:
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1]
         ], onclick=[main, forum])
+    elif valid_user.role_id == 2:
+        # TODO:  Attach navigation screens here
+        put_buttons([
+            globalNavBtns[0],
+            globalNavBtns[1],
+            {'label': 'Report Incident', 'value': 'report_crime', 'color': 'warning'}
+        ], onclick=[main, forum, main])
+    elif valid_user.role_id == 3:
+        put_buttons([
+            globalNavBtns[0],
+            globalNavBtns[1],
+            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
+        ], onclick=[main, forum, main])
+    elif valid_user.role_id == 4:
+        put_buttons([
+            globalNavBtns[0],
+            globalNavBtns[1],
+            {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
+        ], onclick=[main, forum, main])
 
 
 # function to generate a card from post data
@@ -452,6 +581,13 @@ def generate_card(post):
         </div>
         ''').style('margin-bottom: 10px;')
     put_buttons(['Edit', 'Delete'], onclick=[edit_content, main]).style('margin-bottom: 20px;')
+
+
+def get_user_badge(user_id=None):
+    if user_id is not None:
+        return f'<span class="badge bg-{get_role_color(get_role_id(user_id))} text-light">{get_role_name(user_id)}</span>'
+    else:
+        return ''
 
 
 if __name__ == '__main__':
