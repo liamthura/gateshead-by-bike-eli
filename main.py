@@ -10,9 +10,8 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
-from typing import Optional
 
-# Creating a SQL Database 'gbb-eli.db' with SQLAlchemy
+# Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 db = sa.create_engine(sqlite_url, echo=True)
@@ -44,7 +43,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(unique=True)
     # users: Mapped[list["User"]] = relationship("User", back_populates="role_id")
-    color: Mapped[Optional[str]]
+    color: Mapped[str] = mapped_column(nullable=True)
 
     # Structuring output of Role object for better readability
     def __repr__(self):
@@ -57,7 +56,7 @@ class ParkingPost(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     location: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
@@ -77,7 +76,7 @@ class ParkingRating(Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     rating: Mapped[int]
-    comment: Mapped[Optional[str]]
+    comment: Mapped[str] = mapped_column(nullable=True)
 
     def __repr__(self):
         return f"<ParkingRating(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, rating={self.rating})>"
@@ -90,7 +89,7 @@ class Thread(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str]
     content: Mapped[str]
-    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("threads.id"), nullable=True)
+    parent_id: Mapped[int] = mapped_column(ForeignKey("threads.id"), nullable=True)
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     up_votes: Mapped[int]
     down_votes: Mapped[int]
