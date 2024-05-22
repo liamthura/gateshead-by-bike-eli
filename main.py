@@ -379,23 +379,64 @@ def save_rate():
 
 
 @use_scope('ROOT', clear=True)
-def forum():
+def forum_feeds():
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
     if valid_user is not None:
-        put_buttons(['Create a new thread'], onclick=[create_thread]).style('float:right; margin-top: 12px;')
+        put_buttons([
+            {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
+            {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'}
+        ], onclick=[create_thread, own_forum_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Community Forum</h2>')
 
     get_threads()
 
 
-def get_threads():
+@use_scope('ROOT', clear=True)
+def own_forum_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None:
+        put_buttons([
+            {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
+            {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'}
+        ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Community Forum</h2>')
+
+    get_threads(valid_user.id)
+
+
+def get_threads(user_id=None):
+    threadBtnGroup = None
+    if get_role_id(user_id) == 4 or user_id is not None:
+        threadBtnGroup = put_buttons([
+            {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
+            {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
+            {'label': 'Report', 'value': 'report', 'color': 'warning'}
+        ], onclick=[edit_content, main, main], small=True)
+    else:
+        threadBtnGroup = put_buttons([
+            {'label': 'Report', 'value': 'report', 'color': 'warning'}
+        ], onclick=[main], small=True)
+
     with Session() as sesh:
-        threadCount = sesh.query(Thread).count()
-        threads = sesh.query(Thread).order_by(Thread.id.desc()).limit(10).all()
+        if user_id is not None:
+            threads = sesh.query(Thread).filter_by(user_id=user_id).order_by(Thread.id.desc()).limit(10).all()
+            threadCount = sesh.query(Thread).filter_by(user_id=user_id).count()
+        else:
+            threads = sesh.query(Thread).order_by(Thread.id.desc()).limit(10).all()
+            threadCount = sesh.query(Thread).count()
+
+        if threadCount == 0:
+            put_html('<p class="lead text-center">There is no threads</p>')
+            return
+
         for thread in threads:
             threadDateTime = thread.date_time.strftime('%I:%M%p – %d %b, %Y')
             put_html(f'''
@@ -410,7 +451,13 @@ def get_threads():
                     <p>{thread.content}</p>
                 </div>
             </div>
-            ''').style('margin-bottom: 20px;')
+            ''').style('margin-bottom: 10px;')
+            put_row([
+                # TODO Add comment function here
+                put_column([put_buttons(['Leave a Comment'], onclick=[main], small=True)]),
+                put_column([threadBtnGroup]).style('justify-content: end;')
+            ]).style('margin-bottom: 20px;')
+
         if threadCount > 10:
             put_html(f'<p class="text-center">View more threads</p>')
 
@@ -421,7 +468,7 @@ def create_thread():
 
     generate_header()
     generate_nav()
-    put_buttons(['Back to Forum'], onclick=[forum]).style('float:right; margin-top: 12px;')
+    put_buttons(['Back to Forum'], onclick=[forum_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Create a new thread</h2>')
 
     createThreadFields = [
@@ -450,7 +497,7 @@ def create_thread():
     else:
         toast('Thread created successfully', color='success')
     finally:
-        forum()
+        forum_feeds()
 
 
 @use_scope('ROOT')
@@ -560,26 +607,26 @@ def generate_nav():
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1]
-        ], onclick=[main, forum])
+        ], onclick=[main, forum_feeds])
     elif valid_user.role_id == 2:
         # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'Report Incident', 'value': 'report_crime', 'color': 'warning'}
-        ], onclick=[main, forum, main])
+        ], onclick=[main, forum_feeds, main])
     elif valid_user.role_id == 3:
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-        ], onclick=[main, forum, main])
+        ], onclick=[main, forum_feeds, main])
     elif valid_user.role_id == 4:
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-        ], onclick=[main, forum, main])
+        ], onclick=[main, forum_feeds, main])
 
 
 # function to generate a card from post data
@@ -600,7 +647,7 @@ def generate_card(post):
             </div>
         </div>
         ''').style('margin-bottom: 10px;')
-    put_buttons(['Edit', 'Delete'], onclick=[edit_content, main]).style('margin-bottom: 20px;')
+    put_buttons(['Rate', 'Delete'], onclick=[add_rating, main]).style('margin-bottom: 20px;')
 
 
 def get_user_badge(user_id=None):
