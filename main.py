@@ -479,7 +479,7 @@ def create_comment():
             put_buttons([
                 {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
                 {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
-            ], onclick=[main, forum_feeds])
+            ], onclick=[main, close_popup])
         ],
         closable=True
     )
