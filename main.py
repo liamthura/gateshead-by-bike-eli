@@ -357,6 +357,12 @@ def main():
     # put_buttons(['Login', 'Register'], onclick=[login, register])
 
 
+def add_rating():
+    ratings = [1, 2, 3, 4, 5]
+
+
+
+
 @use_scope('ROOT', clear=True)
 def forum():
     clear()
@@ -579,7 +585,7 @@ def generate_card(post):
             </div>
         </div>
         ''').style('margin-bottom: 10px;')
-    put_buttons(['Edit', 'Delete'], onclick=[edit_content, main]).style('margin-bottom: 20px;')
+    put_buttons(['Rate', 'Delete'], onclick=[add_rating, main]).style('margin-bottom: 20px;')
 
 
 def get_user_badge(user_id=None):
