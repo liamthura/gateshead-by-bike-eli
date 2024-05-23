@@ -94,6 +94,8 @@ class Thread(Base):
     up_votes: Mapped[int]
     down_votes: Mapped[int]
     flags: Mapped[int]
+    reports: Mapped[list["ContentReport"]] = relationship("ContentReport", back_populates="associated_thread",
+                                                          cascade="all, delete")
 
     def __repr__(self):
         return f"<Thread(id={self.id}, user_id={self.user_id}, title={self.title})>"
@@ -107,6 +109,7 @@ class ContentReport(Base):
     thread_id: Mapped[int] = mapped_column(ForeignKey("threads.id"))
     comment: Mapped[str]
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
+    associated_thread: Mapped[list["Thread"]] = relationship("Thread", back_populates="reports")
 
     def __repr__(self):
         return f"<ContentReport(id={self.id}, user_id={self.user_id}, thread_id={self.thread_id})>"
@@ -385,7 +388,13 @@ def forum_feeds():
 
     generate_header()
     generate_nav()
-    if valid_user is not None:
+    if valid_user is not None and get_role_id(valid_user.id) == 4:
+        put_buttons([
+            {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
+            {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'},
+            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'warning'}
+        ], onclick=[create_thread, own_forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
+    elif valid_user is not None:
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'}
@@ -402,7 +411,13 @@ def own_forum_feeds():
 
     generate_header()
     generate_nav()
-    if valid_user is not None:
+    if valid_user is not None and get_role_id(valid_user.id) == 4:
+        put_buttons([
+            {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
+            {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'},
+            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'info'}
+        ], onclick=[create_thread, forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
+    elif valid_user is not None:
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'}
@@ -436,11 +451,12 @@ def get_threads(user_id=None):
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id), main], small=True)
+                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id),
+                                partial(report_thread, thread.id)], small=True)
                 else:
                     threadBtnGroup = put_buttons([
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[main], small=True)
+                    ], onclick=[partial(report_thread, thread.id)], small=True)
 
                 threadDateTime = thread.date_time.strftime('%I:%M%p – %d %b, %Y')
                 put_html(f'''
@@ -663,6 +679,185 @@ def delete_thread(thread_id):
     ], onclick=[confirm_delete, forum_feeds if valid_user.role_id == 4 else own_forum_feeds])
 
 
+@use_scope('ROOT', clear=True)
+def content_reports():
+    clear()
+    global valid_user
+    if valid_user is None or get_role_id() != 4:
+        toast('You do not have permission to view this page', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+    put_buttons([
+        {'label': 'Reports by Thread', 'value': 'reports_thread', 'color': 'secondary'},
+    ], onclick=[content_reports_by_thread]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Individual Content Reports</h2>')
+
+    report_table_data = []
+    with Session() as sesh:
+        reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == Thread.id).all()
+        reportCount = len(reports)
+        if reportCount == 0:
+            put_html('<p class="lead text-center">There is no reports</p>')
+            return
+
+        for report in reports:
+            reportDateTime = report.date_time.strftime('%d %b, %Y')
+            report_table_data.append([
+                report.id,
+                get_username(report.user_id)['display_name'],
+                report.associated_thread.title, report.associated_thread.flags,
+                report.comment,
+                reportDateTime,
+                put_buttons([
+                    {'label': 'View Thread', 'value': 'view_thread', 'color': 'info'},
+                    {'label': 'Delete Thread', 'value': 'delete_thread', 'color': 'danger'},
+                ], onclick=[partial(view_thread, report.associated_thread.id),
+                            partial(delete_thread, report.associated_thread.id)], group=True
+                )])
+        put_table(report_table_data, header=[
+            'ID',
+            'Made by',
+            'Reported Thread',
+            'Reported Count',
+            'Reason',
+            'Reported Date',
+            'Actions'
+        ])
+
+
+def content_reports_by_thread():
+    clear()
+    global valid_user
+    if valid_user is None or get_role_id() != 4:
+        toast('You do not have permission to view this page', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+    put_buttons([
+        {'label': 'Individual Reports', 'value': 'reports_each', 'color': 'secondary'},
+    ], onclick=[content_reports]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Content Reports by Thread</h2>')
+
+    report_table_data = []
+    with Session() as sesh:
+        threads = sesh.query(Thread).filter(Thread.flags > 0).order_by(Thread.flags.desc()).all()
+        threadCount = len(threads)
+        if threadCount == 0:
+            put_html('<p class="lead text-center">There is no threads with reports</p>')
+            return
+
+        serialNum = 1
+        for thread in threads:
+            report_table_data.append([
+                serialNum,
+                thread.title,
+                thread.flags,
+                put_buttons([
+                    {'label': 'View Thread', 'value': 'view_thread', 'color': 'info'},
+                    {'label': 'Delete Thread', 'value': 'delete_thread', 'color': 'danger'},
+                ], onclick=[partial(view_thread, thread.id),
+                            partial(delete_thread, thread.id)], group=True
+                )])
+            serialNum += 1
+
+        put_table(report_table_data, header=[
+            'No',
+            'Reported Thread',
+            'Reported Count',
+            'Actions'
+        ])
+
+
+def view_thread(thread_id):
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Content Reports'], onclick=[content_reports]).style('float:right; margin-top: 12px;')
+    put_html('<h2>View Reported Thread</h2>')
+
+    with Session() as sesh:
+        thread = sesh.query(Thread).filter_by(id=thread_id).first()
+        threadDateTime = thread.date_time.strftime('%I:%M%p – %d %b, %Y')
+        put_html(f'''
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title" style="margin: 8px 0;">{thread.title}</h3>
+                <p class="card-subtitle">By <strong>{get_username(thread.user_id)['display_name']}</strong> {get_user_badge(thread.user_id)} at {threadDateTime}</p>
+            </div>
+            <div class="card-body">
+                <p style="white-space: pre-wrap;">{thread.content}</p>
+            </div>
+        </div>
+        ''').style('margin-bottom: 10px;')
+
+        comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
+        if len(comments) != 0:
+            put_html('<p class="h5 fw-bolder">Comments</p>')
+            for comment in comments:
+                commentDateTime = comment.date_time.strftime('%I:%M%p – %d %b, %Y')
+                put_html(f'''
+                <div class="card p-2">
+                    <div class="card-body p-2">
+                    <p class="h6 card-title my-1">
+                    <strong>{get_username(comment.user_id)['display_name']}</strong>
+                    <small class="card-subtitle">{commentDateTime}</small>
+                    </p>
+                    <p class="card-text">{comment.content}</p>
+                    </div>
+                </div>
+                ''').style('margin-bottom: 10px;')
+        put_html('<hr>').style('margin: 32px auto; width: 30%;')
+
+
+def report_thread(thread_id):
+    global valid_user
+
+    def create_report(report_data):
+        if report_data == '':
+            toast('Reason cannot be empty', color='warning')
+            return
+        try:
+            with Session() as sesh:
+                thread = sesh.query(Thread).filter_by(id=thread_id).first()
+                new_report = ContentReport(user_id=valid_user.id, thread_id=thread_id, comment=report_data,
+                                           date_time=datetime.now())
+                thread.flags += 1
+                sesh.add(new_report)
+                sesh.commit()
+        except SQLAlchemyError:
+            toast('An error occurred', color='error')
+        else:
+            toast('Report submitted! Thank you for helping our platform safe!', color='success')
+            close_popup()
+        finally:
+            forum_feeds()
+            scroll_to(f'thread-{thread_id}', position='middle')  # Scroll to the thread after adding a comment
+            return
+
+    if valid_user is None:
+        toast(f'You need to login to report threads', color='warning')
+        user_login()
+    else:
+        popup(
+            'Report a Thread',
+            [
+                put_textarea('reason', label='Reason of Report', rows=3),
+                put_buttons([
+                    {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
+                    {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
+                ], onclick=[lambda: create_report(pin.reason), close_popup])
+            ],
+            closable=True
+        )
+
+
 @use_scope('ROOT')
 def edit_content():
     popup('Edit Content', [
@@ -733,7 +928,7 @@ def generate_header():
         {'label': 'Aa+', 'value': 'bigger', 'color': 'primary'},
         {'label': 'Aa-', 'value': 'smaller', 'color': 'info'},
         {'label': 'Dark Mode', 'value': 'dark_mode', 'color': 'dark'}
-    ], onclick=[bigger_font, smaller_font, toggle_dark_mode]).style(
+    ], onclick=[bigger_font, smaller_font, toggle_dark_mode], group=True).style(
         'float:right')
     put_html(f'''
         <h1>
