@@ -446,7 +446,7 @@ def get_threads(user_id=None):
             # we use use_scope function to later scroll to the thread after adding a comment
             # we use the thread.id as the scope to avoid conflicts with other threads
             with use_scope(f'thread-{thread.id}'):
-                if get_role_id(user_id) == 4 or user_id is not None:
+                if user_id is not None:
                     threadBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
@@ -680,7 +680,7 @@ def delete_thread(thread_id):
 
 
 @use_scope('ROOT', clear=True)
-def content_reports():
+def content_reports(thread_id=None):
     clear()
     global valid_user
     if valid_user is None or get_role_id() != 4:
@@ -697,7 +697,10 @@ def content_reports():
 
     report_table_data = []
     with Session() as sesh:
-        reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == Thread.id).all()
+        if thread_id is not None:
+            reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == thread_id).all()
+        else:
+            reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == Thread.id).all()
         reportCount = len(reports)
         if reportCount == 0:
             put_html('<p class="lead text-center">There is no reports</p>')
@@ -753,15 +756,19 @@ def content_reports_by_thread():
 
         serialNum = 1
         for thread in threads:
+            credibility = thread.up_votes - thread.down_votes
             report_table_data.append([
                 serialNum,
                 thread.title,
                 thread.flags,
+                credibility,
                 put_buttons([
                     {'label': 'View Thread', 'value': 'view_thread', 'color': 'info'},
                     {'label': 'Delete Thread', 'value': 'delete_thread', 'color': 'danger'},
+                    {'label': 'View Reports', 'value': 'view_reports', 'color': 'warning'}
                 ], onclick=[partial(view_thread, thread.id),
-                            partial(delete_thread, thread.id)], group=True
+                            partial(delete_thread, thread.id),
+                            partial(content_reports, thread.id)], group=True
                 )])
             serialNum += 1
 
@@ -769,6 +776,7 @@ def content_reports_by_thread():
             'No',
             'Reported Thread',
             'Reported Count',
+            'Credibility',
             'Actions'
         ])
 
