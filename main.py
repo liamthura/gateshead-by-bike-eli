@@ -398,7 +398,7 @@ def add_rating():
         main()
 
 
-def save_rate(post_id, rateLevels, comment):
+def save_rate(post_id, rateLevels, comment): #saving the rating details to the database
     global valid_user
     if valid_user is None:
         user_id = None
@@ -423,10 +423,14 @@ def get_avg_rating(post_id):
         rating_post = sesh.query(ParkingRating).filter_by(post_id=post_id).all()
         post_count = len(rating_post)
 
-        for rating in rating_post:
-            total_rating += rating.rating
-        ave_result = total_rating / post_count
-        return ave_result
+        #when no rating is detected
+        if post_count == 0:
+            return None
+        else:
+            for rating in rating_post:
+                total_rating += rating.rating
+            avg_result = total_rating / post_count
+            return avg_result
 
 
 @use_scope('ROOT', clear=True)
