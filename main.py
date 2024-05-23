@@ -364,21 +364,97 @@ def main():
     clear()
     generate_header()
     generate_nav()
-    user_data = {'username': 'khantthura',
-                 'date': '12-05-2024',
-                 'display_name': 'Khant Thura',
-                 'content': 'This is a test content to see if the function is working'}
-
-    user_data1 = {'username': 'thura',
-                  'date': '12-05-2024',
-                  'display_name': 'Thura',
-                  'content': 'This is a test content to see if the function is working'}
 
     put_html('<h2>Recent Posts</h2>')
-    generate_card(user_data)
-    generate_card(user_data1)
+    post_feeds()
 
     # put_buttons(['Login', 'Register'], onclick=[login, register])
+
+
+#all posts screen
+@use_scope('ROOT', clear=True)
+def post_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None:
+        put_buttons([
+            {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
+            {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'}
+        ], onclick=[create_post, own_post_feeds]).style('float:right; margin-top: 12px')
+    elif valid_user is None:
+        put_buttons([
+            {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'}
+        ], onclick=[create_post]).style('float:right; margin-top: 12px')
+
+    put_html('<h2>Posts</h2>')
+
+    get_posts()
+
+
+#own posts screen
+@use_scope('ROOT', clear=True)
+def own_post_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None:
+        put_buttons([
+            {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
+            {'label': 'All posts', 'value': 'post_feeds', 'color': 'info'}
+        ], onclick=[create_post, post_feeds]).style('float:right; margin-top: 12px')
+    put_html('<h2>Posts</h2>')
+
+    get_posts(valid_user.id)
+
+
+#accessing posts from ParkingPost
+def get_posts(user_id=None):
+    global valid_user
+    postBtnGroup = None
+
+    with Session() as sesh:
+        posts = sesh.query(ParkingPost).filter_by(user_id=user_id).order_by(ParkingPost.id.desc()).limit(10).all()
+
+        postCount = len(posts)
+        if postCount == 0:
+            put_html('<p class="lead text-center">There is no posts</p>')
+            return
+
+        for post in posts:
+            #we use use_scope function to later scroll to the post after adding a comment
+            #we use the post.id as the scope to avoid conflicts with other posts
+            with use_scope(f'post-{post.id}'):
+                if user_id is not None or (user_id is None and valid_user is not None and post.user_id == valid_user.id):
+                    postBtnGroup = put_buttons([
+                        {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
+                        {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                    ], onclick=[partial(edit_post, post.id), partial(delete_post, post.id)], small=True)
+
+            postDateTime = post.date_time.strftime('%I:%M%p – %d %b, %Y')
+            put_html(f'''
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title" style="margin: 8px 0;">{post.location}</h3>
+                    <p class="card-subtitle mt-0">By <strong>{get_username(post.user_id)["display_name"]}</strong> {get_user_badge(post.user_id)} at {postDateTime}</p>
+                </div>
+                <div class="card-body">
+                        <p style="white-space: pre-wrap;">{post.content}</p>
+                 </div>
+            </div>
+            ''').style('margin-top: 10px;')
+            put_row([
+                put_column([put_buttons([
+                    {'label': 'Rate', 'value': 'add_rating', 'color': 'info'}
+                ], onclick=[partial(add_rating, post.id)], small=True)]),
+            put_column([postBtnGroup]).style('justify-content: end;')
+            ])
+        if postCount > 10:
+            put_html(f'<p class="text-center">View more posts</p>')
 
 
 def add_rating():
@@ -419,6 +495,98 @@ def save_rate(post_id, rateLevels, comment):
     close_popup()
     main()
 
+
+#saving post to ParkingPost
+def create_post():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Create a new post</h2>')
+
+    createPostFields = [
+        input('Location', name='location', required=True),
+        textarea('Content', name='content', required=True, wrap='hard'),
+        actions('', [
+            {'label': 'Create', 'value': 'create', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='post_actions')
+    ]
+
+    post_data = input_group('Create Post', createPostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post creation cancelled')
+        if post_data['post_actions'] == 'create':
+            with Session() as sesh:
+                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], content=post_data['content'])
+                sesh.add(new_post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post created successfully', color='success')
+    finally:
+        post_feeds()
+
+#editing post from ParkingPost
+def edit_post(post_id):
+    clear()
+
+    generate_header()
+    generate_nav()
+
+    with Session() as sesh:
+        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+        updatePostFields = [
+            input('Location', name='location', required=True, value=post.location),
+            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
+            actions('', [
+                {'label': 'Update', 'value': 'update', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='post_actions')
+        ]
+    post_data = input_group('Edit Post', updatePostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post not updated')
+        if post_data['post_actions'] == 'update':
+            with Session() as sesh:
+                post.location = post_data['location']
+                post.content = post_data['content']
+                sesh.add(post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post updated successfully', color='success')
+    finally:
+        post_feeds()
+        scroll_to(f'post-{post_id}', position='middle')
+        return
+
+
+#deleting post from ParkingPost
+def delete_post(post_id):
+    clear()
+
+    generate_header()
+
+    def confirm_delete():
+        with Session() as sesh:
+            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+            sesh.delete(post)
+            sesh.commit()
+        toast(f'The post at {post.location} has been deleted', color='success')
+        #routing council staff to all posts feed and all other users to their own posts feed
+        #because councils have the permission to delete any posts
+        post_feeds() if valid_user.role_id == 4 else own_post_feeds()
 
 def get_avg_rating(post_id):
     total_rating = 0
@@ -1104,7 +1272,6 @@ def generate_card(post):
             </div>
         </div>
         ''').style('margin-bottom: 10px;')
-    put_buttons(['Rate', 'Delete'], onclick=[add_rating, main]).style('margin-bottom: 20px;')
 
 
 def get_user_badge(user_id=None):
