@@ -440,7 +440,7 @@ def own_forum_feeds():
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'},
-            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'info'}
+            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'warning'}
         ], onclick=[create_thread, forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
     elif valid_user is not None:
         put_buttons([
@@ -475,9 +475,10 @@ def get_threads(user_id=None):
                     threadBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
-                        {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id),
-                                partial(report_thread, thread.id)], small=True)
+                        # won't allow users to report their own threads
+                        # {'label': 'Report', 'value': 'report', 'color': 'warning'}
+                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id)
+                                ], small=True)
                 else:
                     threadBtnGroup = put_buttons([
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
@@ -878,18 +879,24 @@ def report_thread(thread_id):
     if valid_user is None:
         toast(f'You need to login to report threads', color='warning')
         user_login()
-    else:
-        popup(
-            'Report a Thread',
-            [
-                put_textarea('reason', label='Reason of Report', rows=3),
-                put_buttons([
-                    {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
-                    {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
-                ], onclick=[lambda: create_report(pin.reason), close_popup])
-            ],
-            closable=True
-        )
+    elif valid_user.id is not None:
+        with Session() as sesh:
+            thread = sesh.query(Thread).filter_by(id=thread_id).first()
+            if thread.user_id == valid_user.id:
+                toast(f'Silly, let\'s not report your own thread :)', color='warning')
+                forum_feeds()
+            else:
+                popup(
+                    'Report a Thread',
+                    [
+                        put_textarea('reason', label='Reason of Report', rows=3),
+                        put_buttons([
+                            {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
+                            {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
+                        ], onclick=[lambda: create_report(pin.reason), close_popup])
+                    ],
+                    closable=True
+                )
 
 
 @use_scope('ROOT')
