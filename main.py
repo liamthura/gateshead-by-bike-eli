@@ -462,13 +462,13 @@ def own_forum_feeds():
     if valid_user is not None and get_role_id(valid_user.id) == 4:
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
-            {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'},
+            {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'},
             {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'warning'}
         ], onclick=[create_thread, forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
     elif valid_user is not None:
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
-            {'label': 'All threads', 'value': 'view_own_threads', 'color': 'info'}
+            {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'}
         ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Community Forum</h2>')
 
