@@ -153,12 +153,19 @@ dark_mode = False
 valid_user = None
 
 
-def user_login(username=None, password=None):
+def user_login(username=None):
     clear()  # to clear previous data if there is
 
     def validate_username(username):
         if re.match("^[a-zA-Z0-9_.-]+$", username) is None:
             return f'Username can only contain letters, numbers, ".", "_" and "-"'
+
+    def validate_password(password):
+        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:
+            toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error', duration=3)
+            return False
+        else:
+            return True
 
     generate_header()
     put_button('Back to Homepage', onclick=lambda: main(), color='secondary').style('float:right')
@@ -167,7 +174,7 @@ def user_login(username=None, password=None):
     # Defining form fields
     loginFields = [
         input("Username", name='name', required=True, validate=validate_username, value=username),
-        input("Password", type=PASSWORD, name='password', value=password, required=True),
+        input("Password", type=PASSWORD, name='password', required=True, minlength=6),
         actions("", [
             {'label': 'Login', 'value': 'login', 'type': 'submit'},
             {'label': 'Register', 'value': 'register', 'type': 'submit', 'color': 'secondary'},
@@ -180,7 +187,7 @@ def user_login(username=None, password=None):
         toast('Login not performed', color='warning')
         user_login()
     elif data['user_action'] == 'register':
-        add_user(data)
+        add_user(data) if validate_password(data['password']) is True else user_login(data['name'])
     elif data['user_action'] == 'login':
         verify_user(data['name'], data['password'])
 
@@ -235,7 +242,7 @@ def add_user(user_data):
     else:
         toast(f'User added, please login with new credentials', color='success')
     finally:
-        user_login()
+        user_login(user_data['name'])
 
 
 def verify_user(username, password):
@@ -509,7 +516,7 @@ def get_threads(user_id=None):
                             <div class="card-body p-2">
                             <p class="h6 card-title m-0">
                             <strong>{get_username(comment.user_id)['display_name']}</strong>
-                            {get_user_badge(comment.user_id) if get_role_id(comment.user_id) in [3, 4] else None} 
+                            {get_user_badge(comment.user_id) if get_role_id(comment.user_id) in [3, 4] else ''} 
                             <small class="card-subtitle">{commentDateTime}</small>
                             </p>
                             <p class="card-text">{comment.content}</p>
