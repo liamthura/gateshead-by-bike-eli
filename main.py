@@ -463,7 +463,7 @@ def get_threads(user_id=None):
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title" style="margin: 8px 0;">{thread.title}</h3>
-                        <p class="card-subtitle">By <strong>{get_username(thread.user_id)["display_name"]}</strong> {get_user_badge(thread.user_id)} at {threadDateTime}</p>
+                        <p class="card-subtitle mt-0">By <strong>{get_username(thread.user_id)["display_name"]}</strong> {get_user_badge(thread.user_id)} at {threadDateTime}</p>
                     </div>
                     <div class="card-body">
                         <p style="white-space: pre-wrap;">{thread.content}</p>
@@ -489,8 +489,9 @@ def get_threads(user_id=None):
                         put_html(f'''
                         <div class="card p-2">
                             <div class="card-body p-2">
-                            <p class="h6 card-title my-1">
+                            <p class="h6 card-title m-0">
                             <strong>{get_username(comment.user_id)['display_name']}</strong>
+                            {get_user_badge(comment.user_id) if get_role_id(comment.user_id) in [3, 4] else None} 
                             <small class="card-subtitle">{commentDateTime}</small>
                             </p>
                             <p class="card-text">{comment.content}</p>
