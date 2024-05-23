@@ -74,7 +74,7 @@ class ParkingRating(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     rating: Mapped[int]
     comment: Mapped[str] = mapped_column(nullable=True)
 
@@ -436,7 +436,7 @@ def get_threads(user_id=None):
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[edit_content, partial(delete_thread, thread), main], small=True)
+                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id), main], small=True)
                 else:
                     threadBtnGroup = put_buttons([
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
@@ -447,10 +447,10 @@ def get_threads(user_id=None):
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title" style="margin: 8px 0;">{thread.title}</h3>
-                        <p class="card-subtitle">By {get_username(thread.user_id)["display_name"]} {get_user_badge(thread.user_id)} at {threadDateTime}</p>
+                        <p class="card-subtitle">By <strong>{get_username(thread.user_id)["display_name"]}</strong> {get_user_badge(thread.user_id)} at {threadDateTime}</p>
                     </div>
                     <div class="card-body">
-                        <p>{thread.content}</p>
+                        <p style="white-space: pre-wrap;">{thread.content}</p>
                     </div>
                 </div>
                 ''').style('margin-bottom: 10px;')
@@ -459,12 +459,12 @@ def get_threads(user_id=None):
                         {'label': 'Add Comment', 'value': 'add_comment', 'color': 'info'},
                         {'label': f'Upvote {thread.up_votes}', 'value': 'upvote', 'color': 'success'},
                         {'label': f'Downvote {thread.down_votes}', 'value': 'downvote', 'color': 'secondary'},
-                    ], onclick=[partial(add_comment, thread), partial(vote_thread, thread, 'up'),
-                                partial(vote_thread, thread, 'down')], small=True)]),
+                    ], onclick=[partial(add_comment, thread.id), partial(vote_thread, thread.id, 'up'),
+                                partial(vote_thread, thread.id, 'down')], small=True)]),
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                comments = sesh.query(Thread).filter_by(parent_id=thread.id).all()
+                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
                 print(len(comments))
                 if len(comments) != 0:
                     put_html('<p class="h5 fw-bolder">Comments</p>')
@@ -472,9 +472,9 @@ def get_threads(user_id=None):
                         commentDateTime = comment.date_time.strftime('%I:%M%p – %d %b, %Y')
                         put_html(f'''
                         <div class="card p-2">
-                            <div class="card-body p-0">
+                            <div class="card-body p-2">
                             <p class="h6 card-title my-1">
-                            {get_username(comment.user_id)['display_name']}
+                            <strong>{get_username(comment.user_id)['display_name']}</strong>
                             <small class="card-subtitle">{commentDateTime}</small>
                             </p>
                             <p class="card-text">{comment.content}</p>
@@ -487,7 +487,7 @@ def get_threads(user_id=None):
             put_html(f'<p class="text-center">View more threads</p>')
 
 
-def add_comment(parent_thread):
+def add_comment(parent_thread_id):
     global valid_user
 
     def create_comment(comment_data):
@@ -496,6 +496,7 @@ def add_comment(parent_thread):
             return
         try:
             with Session() as sesh:
+                parent_thread = sesh.query(Thread).filter_by(id=parent_thread_id).first()
                 new_comment = Thread(user_id=valid_user.id,
                                      title=f'Comment by {get_username(valid_user.id)} to thread: {parent_thread.title}',
                                      content=comment_data, parent_id=parent_thread.id, date_time=datetime.now(),
@@ -509,7 +510,7 @@ def add_comment(parent_thread):
             close_popup()
         finally:
             forum_feeds()
-            scroll_to(f'thread-{parent_thread.id}', position='middle')  # Scroll to the thread after adding a comment
+            scroll_to(f'thread-{parent_thread_id}', position='middle')  # Scroll to the thread after adding a comment
             return
 
     if valid_user is None:
@@ -530,13 +531,14 @@ def add_comment(parent_thread):
         print(f'pin comment here {pin.comment}')
 
 
-def vote_thread(thread, vote_type):
+def vote_thread(thread_id, vote_type):
     if valid_user is None:
-        toast(f'You need to login to vote', color='warning')
+        toast(f'Login / register to vote', color='warning')
         user_login()
         return
     try:
         with Session() as sesh:
+            thread = sesh.query(Thread).filter_by(id=thread_id).first()
             if vote_type == 'up':
                 thread.up_votes += 1
             elif vote_type == 'down':
@@ -546,10 +548,10 @@ def vote_thread(thread, vote_type):
     except SQLAlchemyError:
         toast('An error occurred', color='error')
     else:
-        toast(f'Thread "{thread.title}" has been {vote_type}voted', color='success')
+        toast(f' The thread has been {vote_type}voted', color='info')
     finally:
         forum_feeds()
-        return
+        scroll_to(f'thread-{thread_id}', position='middle')
 
 
 def create_thread():
@@ -563,10 +565,10 @@ def create_thread():
 
     createThreadFields = [
         input('Title', name='title', required=True),
-        textarea('Content', name='content', required=True),
+        textarea('Content', name='content', required=True, wrap='hard'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
-            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel'}
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
         ], name='thread_actions')
     ]
 
@@ -591,29 +593,74 @@ def create_thread():
         forum_feeds()
 
 
-def delete_thread(thread):
+def edit_thread(thread_id):
+    clear()
+
+    generate_header()
+    generate_nav()
+
+    with Session() as sesh:
+        thread = sesh.query(Thread).filter_by(id=thread_id).first()
+        updateThreadFields = [
+            input('Title', name='title', required=True, value=thread.title),
+            textarea('Content', name='content', required=True, value=thread.content, wrap='hard'),
+            actions('', [
+                {'label': 'Update', 'value': 'update', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='thread_actions')
+        ]
+
+    thread_data = input_group('Edit Thread', updateThreadFields, cancelable=True)
+    try:
+        if thread_data is None:
+            raise ValueError('Thread not updated')
+        if thread_data['thread_actions'] == 'update':
+            with Session() as sesh:
+                thread.title = thread_data['title']
+                thread.content = thread_data['content']
+                sesh.add(thread)
+                sesh.commit()
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    else:
+        toast('Thread updated successfully', color='success')
+    finally:
+        forum_feeds()
+        scroll_to(f'thread-{thread_id}', position='middle')
+        return
+
+
+def delete_thread(thread_id):
     """
         When a forum thread is deleted, all threads with the same parent_id to the thread in deletion should be deleted as well
         to avoid orphaned threads.
         """
     clear()
+
     generate_header()
 
     def confirm_delete():
         with Session() as sesh:
+            thread = sesh.query(Thread).filter_by(id=thread_id).first()
             sesh.delete(thread)
             sesh.commit()
             sesh.query(Thread).filter_by(parent_id=thread.id).delete()
             sesh.commit()
         toast(f'Thread "{thread.title}" and its comments have been deleted', color='success')
-        own_forum_feeds()
+        # routing council staff to all forum feeds and all other users to their own forum feeds
+        # because councils have the permission to delete any thread
+        forum_feeds() if valid_user.role_id == 4 else own_forum_feeds()
 
+    with Session() as sesh:
+        thread = sesh.query(Thread).filter_by(id=thread_id).first()
     put_warning(put_markdown(f'''## Warning!   
                              Are you sure you want to delete the thread: "**{thread.title}**" and its comments. This action cannot be undone.'''))
     put_buttons([
         {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
-    ], onclick=[confirm_delete, own_forum_feeds])
+    ], onclick=[confirm_delete, forum_feeds if valid_user.role_id == 4 else own_forum_feeds])
 
 
 @use_scope('ROOT')
