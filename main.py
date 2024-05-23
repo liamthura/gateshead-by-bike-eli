@@ -94,6 +94,7 @@ class ParkingPost(Base):
     type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
+    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post", cascade='all, delete')
     ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post",
                                                           cascade='all, delete')
 
@@ -709,6 +710,8 @@ def create_post():
 
     createPostFields = [
         input('Location', name='location', required=True),
+        radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True),
+        input('Amount of Available Space', name='amount', required=True),
         textarea('Content', name='content', required=True, wrap='hard'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
@@ -722,7 +725,8 @@ def create_post():
             raise ValueError('Post creation cancelled')
         if post_data['post_actions'] == 'create':
             with Session() as sesh:
-                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], content=post_data['content'])
+                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
+                                       amt_slots=post_data['amount'], content=post_data['content'])
                 sesh.add(new_post)
                 sesh.commit()
     except ValueError as ve:
@@ -745,6 +749,8 @@ def edit_post(post_id):
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
+            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True, value=post.type),
+            input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
@@ -758,6 +764,8 @@ def edit_post(post_id):
         if post_data['post_actions'] == 'update':
             with Session() as sesh:
                 post.location = post_data['location']
+                post.type = post_data['type']
+                post.amt_slots = post_data['amount']
                 post.content = post_data['content']
                 sesh.add(post)
                 sesh.commit()
