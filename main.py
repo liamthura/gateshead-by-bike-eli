@@ -10,9 +10,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
-from collections import Counter
-
-from sqlalchemy.util import counter
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
