@@ -59,8 +59,10 @@ class ParkingPost(Base):
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     location: Mapped[str]
+    type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
+    ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="associated_post, cascade='all, delete'")
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
@@ -78,6 +80,7 @@ class ParkingRating(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     rating: Mapped[int]
     comment: Mapped[str] = mapped_column(nullable=True)
+    associated_post: Mapped[list["ParkingPost"]] = relationship("ParkingPost", back_populates="ratings")
 
     def __repr__(self):
         return f"<ParkingRating(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, rating={self.rating})>"
@@ -495,7 +498,8 @@ def get_threads(user_id=None):
             # we use use_scope function to later scroll to the thread after adding a comment
             # we use the thread.id as the scope to avoid conflicts with other threads
             with use_scope(f'thread-{thread.id}'):
-                if user_id is not None or (user_id is None and valid_user is not None and thread.user_id == valid_user.id):
+                if user_id is not None or (
+                        user_id is None and valid_user is not None and thread.user_id == valid_user.id):
                     threadBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
@@ -923,6 +927,37 @@ def report_thread(thread_id):
 
 
 @use_scope('ROOT')
+def crime_report_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons([
+        {'label': 'Report a Crime', 'value': 'report_crime', 'color': 'success'}
+    ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
+    put_html('<h2>My Police Reports</h2>')
+
+
+def report_crime():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to My Police Reports'], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Report a Crime</h2>')
+    reportCrimeFields = [
+        input('Title', name='title', required=True),
+        textarea('Content', name='content', required=True, wrap='hard'),
+        actions('', [
+            {'label': 'Report', 'value': 'report', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='crime_actions')
+    ]
+
+
+@use_scope('ROOT')
 def edit_content():
     popup('Edit Content', [
         put_input('pin_name', label='Say Something'),
@@ -1035,8 +1070,8 @@ def generate_nav():
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'Report Incident', 'value': 'report_crime', 'color': 'warning'}
-        ], onclick=[main, forum_feeds, main])
+            {'label': 'My Police Reports', 'value': 'incident_reports', 'color': 'warning'}
+        ], onclick=[main, forum_feeds, crime_report_feeds])
     elif valid_user.role_id == 3:
         put_buttons([
             globalNavBtns[0],
