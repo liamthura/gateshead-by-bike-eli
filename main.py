@@ -10,6 +10,9 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
+from collections import Counter
+
+from sqlalchemy.util import counter
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -417,6 +420,18 @@ def save_rate(post_id, rateLevels, comment):
     main()
 
 
+def get_avg_rating(post_id):
+    total_rating = 0
+    with Session() as sesh:
+        rating_post = sesh.query(ParkingRating).filter_by(post_id=post_id).all()
+        post_count = len(rating_post)
+
+        for rating in rating_post:
+            total_rating += rating.rating
+        ave_result = total_rating / post_count
+        return ave_result
+
+
 @use_scope('ROOT', clear=True)
 def forum_feeds():
     clear()
@@ -700,7 +715,7 @@ def delete_thread(thread_id):
             thread = sesh.query(Thread).filter_by(id=thread_id).first()
             sesh.delete(thread)
             sesh.commit()
-            sesh.query(Thread).filter_by(parent_id=thread.id).delete()
+            sesh.query(Thread).filter_by(parent_id=thread_id).delete()
             sesh.commit()
         toast(f'Thread "{thread.title}" and its comments have been deleted', color='success')
         # routing council staff to all forum feeds and all other users to their own forum feeds
