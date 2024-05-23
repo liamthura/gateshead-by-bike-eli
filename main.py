@@ -62,7 +62,7 @@ class ParkingPost(Base):
     type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
-    ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="associated_post, cascade='all, delete'")
+    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post", cascade='all, delete')
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
@@ -303,7 +303,7 @@ def get_username(user_id=None):
             display_name = selected_user.display_name
         return {'username': username, 'display_name': display_name}
     else:
-        return 'Guest User'
+        return {'display_name': 'Guest User'}
 
 
 def get_role_name(user_id=None):
@@ -439,12 +439,16 @@ def get_posts(user_id=None):
             put_html(f'''
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title" style="margin: 8px 0;">{post.location}</h3>
+                    <h3 class="card-title" style="margin: 8px 0;">{post.location} ({post.amt_slots})</h3>
                     <p class="card-subtitle mt-0">By <strong>{get_username(post.user_id)["display_name"]}</strong> {get_user_badge(post.user_id)} at {postDateTime}</p>
                 </div>
                 <div class="card-body">
-                        <p style="white-space: pre-wrap;">{post.content}</p>
-                 </div>
+                    <h4 class="card-title" style="margin: 8px 0;">{post.type}</h3>    
+                    <p style="white-space: pre-wrap;">{post.content}</p>
+                </div>
+                <div class="card-footer text-muted">
+                    {get_avg_rating(post.id)}
+                </div>
             </div>
             ''').style('margin-top: 10px;')
             put_row([
@@ -508,6 +512,8 @@ def create_post():
 
     createPostFields = [
         input('Location', name='location', required=True),
+        radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True),
+        input('Amount of Available Space', name='amount', required=True),
         textarea('Content', name='content', required=True, wrap='hard'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
@@ -521,7 +527,8 @@ def create_post():
             raise ValueError('Post creation cancelled')
         if post_data['post_actions'] == 'create':
             with Session() as sesh:
-                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], content=post_data['content'])
+                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
+                                       amt_slots=post_data['amount'], content=post_data['content'])
                 sesh.add(new_post)
                 sesh.commit()
     except ValueError as ve:
@@ -544,6 +551,8 @@ def edit_post(post_id):
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
+            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True, value=post.type),
+            input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
@@ -557,6 +566,8 @@ def edit_post(post_id):
         if post_data['post_actions'] == 'update':
             with Session() as sesh:
                 post.location = post_data['location']
+                post.type = post_data['type']
+                post.amt_slots = post_data['amount']
                 post.content = post_data['content']
                 sesh.add(post)
                 sesh.commit()
@@ -594,10 +605,13 @@ def get_avg_rating(post_id):
         rating_post = sesh.query(ParkingRating).filter_by(post_id=post_id).all()
         post_count = len(rating_post)
 
-        for rating in rating_post:
-            total_rating += rating.rating
-        ave_result = total_rating / post_count
-        return ave_result
+        if post_count == 0:
+            return None
+        else:
+            for rating in rating_post:
+                total_rating += rating.rating
+            avg_result = total_rating / post_count
+            return avg_result
 
 
 @use_scope('ROOT', clear=True)
