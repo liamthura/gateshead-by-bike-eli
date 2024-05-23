@@ -29,6 +29,7 @@ class User(Base):
     password: Mapped[str]
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
     subscription_status: Mapped[bool] = mapped_column(default=False)
+    notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="creator")
 
     # posts: Mapped[list["ParkingPost"]] = relationship("Post", back_populates="user_id")
 
@@ -132,12 +133,21 @@ class CrimeReport(Base):
         return f"<CrimeReport(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
-# class PoliceNotification(Base):
-#     pass
-#
-#
-# class SiteNotification(Base):
-#     pass
+class Notification(Base):
+    __tablename__ = 'notifications'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    by_role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
+    title: Mapped[str]
+    content: Mapped[str]
+    date_time: Mapped[datetime] = mapped_column(default=datetime.now())
+    category: Mapped[str]
+    status: Mapped[str]
+    creator: Mapped[list["User"]] = relationship("User", back_populates="notifications")
+
+    def __repr__(self):
+        return f"<SiteNotification(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
 Base.metadata.create_all(db)
@@ -162,7 +172,8 @@ def user_login(username=None):
 
     def validate_password(password):
         if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:
-            toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error', duration=3)
+            toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error',
+                  duration=3)
             return False
         else:
             return True
@@ -380,7 +391,7 @@ def add_rating():
               put_textarea('comment', label='Feedback', placeholder='Say something', rows=2),
               put_buttons(['Save', 'Cancel'], onclick=[save_rate, main])], closable=True)
 
-    if pin.rateLevels == None:
+    if pin.rateLevels is None:
         toast('Cannot rate without selecting any ratings.',
               position='center', color='#2188ff', duration=5)
     else:
@@ -453,6 +464,7 @@ def own_forum_feeds():
 
 
 def get_threads(user_id=None):
+    global valid_user
     threadBtnGroup = None
 
     with Session() as sesh:
@@ -479,6 +491,12 @@ def get_threads(user_id=None):
                         # {'label': 'Report', 'value': 'report', 'color': 'warning'}
                     ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id)
                                 ], small=True)
+                elif valid_user is not None and thread.user_id != valid_user.id:
+                    threadBtnGroup = put_buttons([
+                        {'label': 'Report', 'value': 'report', 'color': 'warning'}
+                    ], onclick=[partial(report_thread, thread.id)], small=True)
+                elif valid_user is not None and thread.user_id == valid_user.id:
+                    threadBtnGroup = None
                 else:
                     threadBtnGroup = put_buttons([
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
