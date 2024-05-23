@@ -483,21 +483,14 @@ def get_threads(user_id=None):
             # we use use_scope function to later scroll to the thread after adding a comment
             # we use the thread.id as the scope to avoid conflicts with other threads
             with use_scope(f'thread-{thread.id}'):
-                if user_id is not None:
+                if user_id is not None or (user_id is None and valid_user is not None and thread.user_id == valid_user.id):
                     threadBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'},
                         # won't allow users to report their own threads
-                        # {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id)
-                                ], small=True)
-                elif valid_user is not None and thread.user_id != valid_user.id:
-                    threadBtnGroup = put_buttons([
-                        {'label': 'Report', 'value': 'report', 'color': 'warning'}
-                    ], onclick=[partial(report_thread, thread.id)], small=True)
-                elif valid_user is not None and thread.user_id == valid_user.id:
-                    threadBtnGroup = None
-                else:
+                    ], onclick=[partial(edit_thread, thread.id), partial(delete_thread, thread.id)]
+                        , small=True)
+                elif valid_user is None or (valid_user is not None and thread.user_id != valid_user.id):
                     threadBtnGroup = put_buttons([
                         {'label': 'Report', 'value': 'report', 'color': 'warning'}
                     ], onclick=[partial(report_thread, thread.id)], small=True)
