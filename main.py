@@ -361,8 +361,6 @@ def main():
 
 
 def add_rating():
-    # rateLevels = radio("Choose from 1 being the worst and 5 being the best",
-    # options=[1, 2, 3, 4, 5], name='ratingOptions')),
     popup('Rate this spot',
           [
               put_radio('rateLevels', [
@@ -372,13 +370,33 @@ def add_rating():
                   {'label': '4', 'value': 4},
                   {'label': '5', 'value': 5}
               ], label='Rate this spot', inline=True, help_text='1 - Least helpful, 5 - Most helpful'),
-              put_textarea('pin_name', label='Feedback', placeholder='Say something', rows=2),
+              put_textarea('comment', label='Feedback', placeholder='Say something', rows=2),
               put_buttons(['Save', 'Cancel'], onclick=[save_rate, main])], closable=True)
 
+    if pin.rateLevels == None:
+        toast('Cannot rate without selecting any ratings.',
+              position='center', color='#2188ff', duration=5)
+    else:
+        main()
 
-def save_rate():
-    post_id = get_user_id()
-    pass
+
+def save_rate(post_id, rateLevels, comment):
+    global valid_user
+    if valid_user is None:
+        user_id = None
+    else:
+        user_id = valid_user.id
+
+    with Session() as sesh:
+        rating = ParkingRating(post_id=post_id,
+                               user_id=user_id,
+                               rating=rateLevels,
+                               comment=comment)
+        sesh.add(rating)
+        sesh.commit()
+
+    close_popup()
+    main()
 
 
 @use_scope('ROOT', clear=True)
