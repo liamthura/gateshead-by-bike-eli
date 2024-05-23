@@ -697,6 +697,98 @@ def delete_post(post_id):
         #because councils have the permission to delete any posts
         post_feeds() if valid_user.role_id == 4 else own_post_feeds()
 
+#saving post to ParkingPost
+def create_post():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Create a new post</h2>')
+
+    createPostFields = [
+        input('Location', name='location', required=True),
+        textarea('Content', name='content', required=True, wrap='hard'),
+        actions('', [
+            {'label': 'Create', 'value': 'create', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='post_actions')
+    ]
+
+    post_data = input_group('Create Post', createPostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post creation cancelled')
+        if post_data['post_actions'] == 'create':
+            with Session() as sesh:
+                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], content=post_data['content'])
+                sesh.add(new_post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post created successfully', color='success')
+    finally:
+        post_feeds()
+
+#editing post from ParkingPost
+def edit_post(post_id):
+    clear()
+
+    generate_header()
+    generate_nav()
+
+    with Session() as sesh:
+        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+        updatePostFields = [
+            input('Location', name='location', required=True, value=post.location),
+            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
+            actions('', [
+                {'label': 'Update', 'value': 'update', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='post_actions')
+        ]
+    post_data = input_group('Edit Post', updatePostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post not updated')
+        if post_data['post_actions'] == 'update':
+            with Session() as sesh:
+                post.location = post_data['location']
+                post.content = post_data['content']
+                sesh.add(post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post updated successfully', color='success')
+    finally:
+        post_feeds()
+        scroll_to(f'post-{post_id}', position='middle')
+        return
+
+
+#deleting post from ParkingPost
+def delete_post(post_id):
+    clear()
+
+    generate_header()
+
+    def confirm_delete():
+        with Session() as sesh:
+            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+            sesh.delete(post)
+            sesh.commit()
+        toast(f'The post at {post.location} has been deleted', color='success')
+        #routing council staff to all posts feed and all other users to their own posts feed
+        #because councils have the permission to delete any posts
+        post_feeds() if valid_user.role_id == 4 else own_post_feeds()
+
 def get_avg_rating(post_id):
     total_rating = 0
     with Session() as sesh:
