@@ -269,11 +269,11 @@ def user_login(username=None):
     clear()  # to clear previous data if there is
 
     def validate_username(username):
-        if re.match("^[a-zA-Z0-9_.-]+$", username) is None:
+        if re.match("^[a-zA-Z0-9_.-]+$", username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
             return f'Username can only contain letters, numbers, ".", "_" and "-"'
 
     def validate_password(password):
-        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:
+        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:  # check if password contains lowercase, uppercase and number
             toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error',
                   duration=3)
             return False
