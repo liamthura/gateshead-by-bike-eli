@@ -500,7 +500,7 @@ def add_rating():
         main()
 
 
-def save_rate(post_id, rateLevels, comment):
+def save_rate(post_id, rateLevels, comment): #saving the rating details to the database
     global valid_user
     if valid_user is None:
         user_id = None
