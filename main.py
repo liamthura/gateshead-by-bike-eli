@@ -615,7 +615,7 @@ def get_threads(user_id=None):
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title" style="margin: 8px 0;">{thread.title}</h3>
-                        <p class="card-subtitle mt-0">By <strong>{get_username(thread.user_id)["display_name"]}</strong> {get_user_badge(thread.user_id)} at {threadDateTime}</p>
+                        <p class="card-subtitle mt-0">By <strong>{get_username(thread.user_id)["display_name"]}</strong> {get_user_badge(thread.user_id) if get_role_id(thread.user_id) != 1 else ''} at {threadDateTime}</p>
                     </div>
                     <div class="card-body">
                         <p style="white-space: pre-wrap;">{thread.content}</p>
