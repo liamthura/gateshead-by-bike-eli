@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+import pandas as pd
 import re
 from pywebio import *
 from pywebio.pin import *
@@ -10,6 +11,8 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
+
+dataFile = pd.read_csv('db/roles.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -62,7 +65,8 @@ class ParkingPost(Base):
     type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
-    ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="associated_post, cascade='all, delete'")
+    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post",
+                                                          cascade='all, delete')
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
@@ -129,8 +133,8 @@ class CrimeReport(Base):
     location: Mapped[str]
     description: Mapped[str]
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
-    is_emergency: Mapped[bool]
-    status: Mapped[str]
+    is_emergency: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(default='Pending')
 
     def __repr__(self):
         return f"<CrimeReport(id={self.id}, user_id={self.user_id}, title={self.title})>"
@@ -154,6 +158,11 @@ class Notification(Base):
 
 
 Base.metadata.create_all(db)
+
+# Inserting default user roles into the roles table if it is empty
+with Session() as sesh:
+    if sesh.query(Role).count() == 0:
+        dataFile.to_sql('roles', db, if_exists='append', index=False)
 
 # defining global variables to keep track of font size changes
 smaller_font_clicks = 0
@@ -926,7 +935,6 @@ def report_thread(thread_id):
                 )
 
 
-@use_scope('ROOT')
 def crime_report_feeds():
     clear()
     global valid_user
@@ -938,6 +946,43 @@ def crime_report_feeds():
     ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
     put_html('<h2>My Police Reports</h2>')
 
+    crime_table_data = []
+    seriesNum = 1
+    try:
+        with Session() as sesh:
+            crimes = sesh.query(CrimeReport).filter_by(user_id=get_user_id()).all()
+            crimeCount = len(crimes)
+            if crimeCount == 0:
+                put_html('<p class="lead text-center">There is no police reports</p>')
+                return
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        for crime in crimes:
+            crimeDateTime = crime.date_time.strftime('%d %b, %Y')
+            crime_table_data.append([
+                seriesNum,
+                crime.id,
+                crime.title,
+                crime.category,
+                crimeDateTime,
+                crime.status,
+                put_buttons([
+                    {'label': 'View', 'value': 'edit', 'color': 'primary'},
+                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
+            ])
+            seriesNum += 1
+        put_table(crime_table_data, header=[
+            'No',
+            'Ref ID',
+            'Title',
+            'Nature',
+            'Date',
+            'Status',
+            'Action'
+        ])
+
 
 def report_crime():
     clear()
@@ -947,14 +992,129 @@ def report_crime():
     generate_nav()
     put_buttons(['Back to My Police Reports'], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Report a Crime</h2>')
+
     reportCrimeFields = [
         input('Title', name='title', required=True),
-        textarea('Content', name='content', required=True, wrap='hard'),
+        select('Nature of Crime', ['Theft', 'Assault', 'Vandalism', 'Other'
+                                   ], name='category', required=True, value='Theft',
+               onchange=lambda c: input_update('other', placeholder='Please specify', hidden=False,
+                                               required=False) if c == 'Other' else input_update('other', hidden=True)),
+        input('', name='other', required=False, hidden=True, maxlength=20),
+        input('Where is this happening?', name='location', required=True, maxlength=30,
+              placeholder='e.g. \'Gateshead Trinity Square\' or \'NE8 1AG\''),
+        textarea('Description', name='content', required=True, wrap='hard'),
+        checkbox('Is this an emergency?', name='emergency', options=[{'label': 'Yes', 'value': True}]),
         actions('', [
             {'label': 'Report', 'value': 'report', 'type': 'submit'},
             {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
         ], name='crime_actions')
+
     ]
+
+    crime_data = input_group('Report a Crime', reportCrimeFields, cancelable=True)
+
+    try:
+        if crime_data is None:
+            raise ValueError('Crime report cancelled')
+        if crime_data['crime_actions'] == 'report':
+            with Session() as sesh:
+                new_crime = CrimeReport(user_id=valid_user.id, title=crime_data['title'],
+                                        category=crime_data['category'] if crime_data['category'] != 'other' else
+                                        crime_data['other'],
+                                        location=crime_data['location'], description=crime_data['content'],
+                                        is_emergency=True if True in crime_data['emergency'] else False,
+                                        date_time=datetime.now(), status='Pending')
+                sesh.add(new_crime)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Crime reported successfully', color='success')
+    finally:
+        crime_report_feeds()
+
+
+def view_crime(crime_id):
+    clear()
+
+    current_crime_status = None
+
+    def change_crime_status():
+        new_status = input_group('Change Status', [
+            select('New Status', ["Pending", "Under Investigation", "Action Taken", "Closed"], name='status',
+                   required=True, value=current_crime_status),
+            actions('', [
+                {'label': 'Change', 'value': 'change', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='status_actions')
+        ])
+
+        if new_status is not None:
+            if new_status['status_actions'] == 'change':
+                new_status = new_status['status']
+                with Session() as sesh:
+                    crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
+                    crime.status = new_status
+                    sesh.add(crime)
+                    sesh.commit()
+                toast(f'Crime report status has been changed to "{new_status}"', color='success')
+                clear()
+                view_crime(crime_id)
+            elif new_status['status_actions'] == 'cancel':
+                clear()
+                view_crime(crime_id)
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to My Police Reports'], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Report Detail</h2>')
+
+    with Session() as sesh:
+        crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
+        current_crime_status = crime.status
+        crimeDateTime = crime.date_time.strftime('%I:%M%p – %d %b, %Y')
+        put_table([
+            ['Reference ID', crime.id],
+            ['Date and Time', crimeDateTime],
+            ['By', get_username(crime.user_id)['display_name']],
+            ['Emergency',
+             'Yes' if crime.is_emergency else 'No'],
+            ['Description', crime.description],
+            ['Location', crime.location],
+            ['Nature of Crime', crime.category],
+            ['Status', crime.status]
+        ], header=[
+            span(put_html(f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
+                 col=2)])
+
+        if get_role_id() == 4:
+            put_buttons([
+                {'label': 'Change Status', 'value': 'edit', 'color': 'primary'},
+                {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+            ], onclick=[change_crime_status, partial(delete_crime, crime.id)])
+
+
+def delete_crime(crime_id):
+    clear()
+
+    generate_header()
+
+    def confirm_delete():
+        with Session() as sesh:
+            crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
+            sesh.delete(crime)
+            sesh.commit()
+        toast(f'Crime report "{crime.title}" has been deleted', color='success')
+        crime_report_feeds()
+
+    put_warning(put_markdown(f'''## Warning!   
+                             Are you sure you want to delete the crime report? This action cannot be undone.'''))
+    put_buttons([
+        {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
+        {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
+    ], onclick=[confirm_delete, crime_report_feeds])
 
 
 @use_scope('ROOT')
@@ -1070,7 +1230,7 @@ def generate_nav():
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'My Police Reports', 'value': 'incident_reports', 'color': 'warning'}
+            {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
         ], onclick=[main, forum_feeds, crime_report_feeds])
     elif valid_user.role_id == 3:
         put_buttons([
