@@ -269,11 +269,13 @@ def user_login(username=None):
     clear()  # to clear previous data if there is
 
     def validate_username(username):
-        if re.match("^[a-zA-Z0-9_.-]+$", username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
+        if re.match("^[a-zA-Z0-9_.-]+$",
+                    username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
             return f'Username can only contain letters, numbers, ".", "_" and "-"'
 
     def validate_password(password):
-        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:  # check if password contains lowercase, uppercase and number
+        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)",
+                    password) is None:  # check if password contains lowercase, uppercase and number
             toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error',
                   duration=3)
             return False
@@ -509,7 +511,7 @@ def own_post_feeds():
     put_html('<h2>Posts</h2>')
 
     get_posts(valid_user.id)
-
+    
 
 #accessing posts from ParkingPost
 def get_posts(user_id=None):
@@ -559,7 +561,8 @@ def get_posts(user_id=None):
             put_html(f'<p class="text-center">View more posts</p>')
 
 
-def add_rating():
+
+def add_rating(post_id=1):  # post_id need to be passed here by ivy (set default 1 for testing)
     popup('Rate this spot',
           [
               put_radio('rateLevels', [
@@ -570,17 +573,23 @@ def add_rating():
                   {'label': '5', 'value': 5}
               ], label='Rate this spot', inline=True, help_text='1 - Least helpful, 5 - Most helpful'),
               put_textarea('comment', label='Feedback', placeholder='Say something', rows=2),
-              put_buttons(['Save', 'Cancel'], onclick=[save_rate, main])], closable=True)
+              put_buttons(['Save', 'Cancel'], onclick=[
+                  partial(save_rate, post_id),
+                  main])], closable=True)
 
-    if pin.rateLevels is None:
+
+def save_rate(post_id):  #saving the rating details to the database
+    global valid_user
+
+    # Get user input
+    rate_levels = pin.rateLevels
+    comment = pin.comment
+
+    if rate_levels is None:
         toast('Cannot rate without selecting any ratings.',
               position='center', color='#2188ff', duration=5)
-    else:
-        main()
+        return
 
-
-def save_rate(post_id, rateLevels, comment): #saving the rating details to the database
-    global valid_user
     if valid_user is None:
         user_id = None
     else:
@@ -589,12 +598,14 @@ def save_rate(post_id, rateLevels, comment): #saving the rating details to the d
     with Session() as sesh:
         rating = ParkingRating(post_id=post_id,
                                user_id=user_id,
-                               rating=rateLevels,
+                               rating=rate_levels,
                                comment=comment)
         sesh.add(rating)
         sesh.commit()
-
     close_popup()
+    toast('Rating saved successfully!', position='center', color='#2188ff', duration=6)
+
+    # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
 
 
@@ -1317,7 +1328,8 @@ def report_crime():
         if crime_data['crime_actions'] == 'report':
             with Session() as sesh:
                 new_crime = CrimeReport(user_id=valid_user.id, title=crime_data['title'],
-                                        category=crime_data['category'] if crime_data['category'] != 'other' else  # if the category is 'other', use the other input field
+                                        category=crime_data['category'] if crime_data[
+                                                                               'category'] != 'other' else  # if the category is 'other', use the other input field
                                         crime_data['other'],
                                         location=crime_data['location'], description=crime_data['content'],
                                         is_emergency=True if True in crime_data['emergency'] else False,
@@ -1327,7 +1339,7 @@ def report_crime():
     except ValueError as ve:
         toast(f'{str(ve)}', color='error')
     except SQLAlchemyError:
-        toast('An error occurred', color='error') # if there is an error in the database
+        toast('An error occurred', color='error')  # if there is an error in the database
     else:
         toast('Crime reported successfully', color='success')
     finally:
@@ -1396,7 +1408,7 @@ def view_crime(crime_id):
         ], header=[
             span(put_html(
                 f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
-                 col=2)])
+                col=2)])
 
         if get_role_id() == 4:  # if the user is a police staff, show the change status button
             put_buttons([
