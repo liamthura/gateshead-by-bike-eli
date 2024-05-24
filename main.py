@@ -481,13 +481,7 @@ def post_feeds():
 
     generate_header()
     generate_nav()
-    if valid_user is not None and get_role_id(valid_user.id) == 2:
-        put_buttons([
-            {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
-            {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'},
-            {'label': 'Report Crime', 'value': 'report_crime', 'color': 'danger'}
-        ], onclick=[create_post, own_post_feeds, report_crime]).style('float:right; margin-top: 12px')
-    elif valid_user is not None:
+    if valid_user is not None:
         put_buttons([
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
             {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'}
@@ -619,6 +613,116 @@ def save_rate(post_id):  #saving the rating details to the database
     # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
 
+
+#saving post to ParkingPost
+def create_post():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Create a new post</h2>')
+
+    createPostFields = [
+        input('Location', name='location', required=True),
+        select('Type', options=[
+            {'label': 'Rack', 'value': 'Rack', 'selected': True},
+            {'label': 'Locker', 'value': 'Locker'},
+            {'label': 'Shelter', 'value': 'Shelter'},
+            {'label': 'Corral', 'value': 'Corral'},
+            {'label': 'Indoor', 'value': 'Indoor'}
+        ], name='type', required=True),
+        input('Amount of Available Space', name='amount', min='0', required=True),
+        textarea('Content', name='content', required=True, wrap='hard'),
+        actions('', [
+            {'label': 'Create', 'value': 'create', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='post_actions')
+    ]
+
+    post_data = input_group('Create Post', createPostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post creation cancelled')
+        if post_data['post_actions'] == 'create':
+            with Session() as sesh:
+                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
+                                       amt_slots=post_data['amount'], content=post_data['content'])
+                sesh.add(new_post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post created successfully', color='success')
+    finally:
+        post_feeds()
+
+#editing post from ParkingPost
+def edit_post(post_id):
+    clear()
+
+    generate_header()
+    generate_nav()
+
+    with Session() as sesh:
+        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+        updatePostFields = [
+            input('Location', name='location', required=True, value=post.location),
+            select('Type', options=[
+                {'label': 'Rack', 'value': 'Rack', 'selected': True},
+                {'label': 'Locker', 'value': 'Locker'},
+                {'label': 'Shelter', 'value': 'Shelter'},
+                {'label': 'Corral', 'value': 'Corral'},
+                {'label': 'Indoor', 'value': 'Indoor'}
+            ], name='type', required=True, value=post.type),
+            input('Amount of Available Space', name='amount', min='0', required=True, value=post.amt_slots),
+            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
+            actions('', [
+                {'label': 'Update', 'value': 'update', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='post_actions')
+        ]
+    post_data = input_group('Edit Post', updatePostFields, cancelable=True)
+    try:
+        if post_data is None:
+            raise ValueError('Post not updated')
+        if post_data['post_actions'] == 'update':
+            with Session() as sesh:
+                post.location = post_data['location']
+                post.type = post_data['type']
+                post.amt_slots = post_data['amount']
+                post.content = post_data['content']
+                sesh.add(post)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Post updated successfully', color='success')
+    finally:
+        post_feeds()
+        scroll_to(f'post-{post_id}', position='middle')
+        return
+
+
+#deleting post from ParkingPost
+def delete_post(post_id):
+    clear()
+    generate_header()
+
+    def confirm_delete():
+        with Session() as sesh:
+            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+            sesh.delete(post)
+            sesh.commit()
+        toast(f'The post at {post.location} has been deleted', color='success')
+        #routing council staff to all posts feed and all other users to their own posts feed
+        #because councils have the permission to delete any posts
+        post_feeds() if valid_user.role_id == 4 else own_post_feeds()
 
 #saving post to ParkingPost
 def create_post():
@@ -1744,36 +1848,31 @@ def generate_nav():
     # global navigation buttons regardless of the user role
     globalNavBtns = [
         {'label': 'Home', 'value': 'home', 'color': 'primary'},
-        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'},
-        {'label': 'Crime Notification', 'value': 'police', 'color': 'danger'}
+        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
     ]
 
-    if valid_user is None or valid_user.role_id == 1 or valid_user.role_id == 3:  # if the user is unregistered or registered (Standard User) or a Police Staff (Police User)
+    if valid_user is None or valid_user.role_id == 1:  # if the user registered (Standard User)
         put_buttons([
             globalNavBtns[0],
-            globalNavBtns[1],
-            globalNavBtns[2]
-        ], onclick=[main, forum_feeds, crime_noti_feeds])
+            globalNavBtns[1]
+        ], onclick=[main, forum_feeds])
     elif valid_user.role_id == 2:  # if the user is a Power User
         # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            globalNavBtns[2],
             {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
-        ], onclick=[main, forum_feeds, crime_noti_feeds, crime_report_feeds])
+        ], onclick=[main, forum_feeds, crime_report_feeds])
     elif valid_user.role_id == 3:  # if the user is a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            globalNavBtns[2],
-            {'label': 'Announce Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-        ], onclick=[main, forum_feeds, crime_noti_feeds, report_crime])
+            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
+        ], onclick=[main, forum_feeds, main])
     elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            globalNavBtns[2],
             {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
         ], onclick=[main, forum_feeds, notifications_panel])
 
