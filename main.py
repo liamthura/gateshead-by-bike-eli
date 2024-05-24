@@ -479,7 +479,13 @@ def post_feeds():
 
     generate_header()
     generate_nav()
-    if valid_user is not None:
+    if valid_user is not None and get_role_id(valid_user.id) == 2:
+        put_buttons([
+            {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
+            {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'},
+            {'label': 'Report Crime', 'value': 'report_crime', 'color': 'danger'}
+        ], onclick=[create_post, own_post_feeds, report_crime]).style('float:right; margin-top: 12px')
+    elif valid_user is not None:
         put_buttons([
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
             {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'}
@@ -518,7 +524,10 @@ def get_posts(user_id=None):
     postBtnGroup = None
 
     with Session() as sesh:
-        posts = sesh.query(ParkingPost).filter_by(user_id=user_id).order_by(ParkingPost.id.desc()).limit(10).all()
+        if user_id is not None:
+            posts = sesh.query(ParkingPost).filter_by(user_id=user_id).order_by(ParkingPost.id.desc()).limit(10).all()
+        else:
+            posts = sesh.query(ParkingPost).order_by(ParkingPost.id.desc()).limit(10).all()
 
         postCount = len(posts)
         if postCount == 0:
@@ -526,7 +535,6 @@ def get_posts(user_id=None):
             return
 
         for post in posts:
-            #we use use_scope function to later scroll to the post after adding a comment
             #we use the post.id as the scope to avoid conflicts with other posts
             with use_scope(f'post-{post.id}'):
                 if user_id is not None or (user_id is None and valid_user is not None and post.user_id == valid_user.id):
@@ -539,23 +547,25 @@ def get_posts(user_id=None):
             put_html(f'''
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title" style="margin: 8px 0;">{post.location} ({post.amt_slots})</h3>
+                    <h3 class="card-title" style="margin: 8px 0;">{post.location}</h3>
+                    <p class="card-subtitle mt-0">Amount of Spaces: <strong>({post.amt_slots})</strong> at {postDateTime}</p>
                 </div>
                 <div class="card-body">
                     <h4 class="card-title" style="margin: 8px 0;">{post.type}</h3>    
                     <p style="white-space: pre-wrap;">{post.content}</p>
                 </div>
                 <div class="card-footer text-muted">
-                    {get_avg_rating(post.id)}
+                    Rating: {get_avg_rating(post.id)}
                 </div>
             </div>
-            ''').style('margin-top: 10px;')
+            ''').style('margin-bottom: 10px;')
             put_row([
                 put_column([put_buttons([
                     {'label': 'Rate', 'value': 'add_rating', 'color': 'info'}
                 ], onclick=[partial(add_rating, post.id)], small=True)]),
             put_column([postBtnGroup]).style('justify-content: end;')
             ])
+            postBtnGroup = None
         if postCount > 10:
             put_html(f'<p class="text-center">View more posts</p>')
 
@@ -611,8 +621,14 @@ def create_post():
 
     createPostFields = [
         input('Location', name='location', required=True),
-        radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True),
-        input('Amount of Available Space', name='amount', required=True),
+        select('Type', options=[
+            {'label': 'Rack', 'value': 'Rack', 'selected': True},
+            {'label': 'Locker', 'value': 'Locker'},
+            {'label': 'Shelter', 'value': 'Shelter'},
+            {'label': 'Corral', 'value': 'Corral'},
+            {'label': 'Indoor', 'value': 'Indoor'}
+        ], name='type', required=True),
+        input('Amount of Available Space', name='amount', min='0', required=True),
         textarea('Content', name='content', required=True, wrap='hard'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
@@ -650,8 +666,14 @@ def edit_post(post_id):
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
-            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
+            select('Type', options=[
+                {'label': 'Rack', 'value': 'Rack', 'selected': True},
+                {'label': 'Locker', 'value': 'Locker'},
+                {'label': 'Shelter', 'value': 'Shelter'},
+                {'label': 'Corral', 'value': 'Corral'},
+                {'label': 'Indoor', 'value': 'Indoor'}
+            ], name='type', required=True, value=post.type),
+            input('Amount of Available Space', name='amount', min='0', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
@@ -685,7 +707,6 @@ def edit_post(post_id):
 #deleting post from ParkingPost
 def delete_post(post_id):
     clear()
-
     generate_header()
 
     def confirm_delete():
@@ -796,6 +817,16 @@ def delete_post(post_id):
         #routing council staff to all posts feed and all other users to their own posts feed
         #because councils have the permission to delete any posts
         post_feeds() if valid_user.role_id == 4 else own_post_feeds()
+
+    with Session() as sesh:
+        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+    put_warning(put_markdown(f'''## Warning!
+                                Are you sure you want to delete the post. This action cannot be undone.''' ))
+
+    put_buttons([
+        {'label': 'Yes, confirm delete', 'value': 'confirm', 'color': 'danger'},
+        {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
+    ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds()])
 
 def get_avg_rating(post_id):
     total_rating = 0
@@ -1379,7 +1410,7 @@ def report_crime():
     clear()
     global valid_user
 
-    if valid_user is None or get_role_id() != 3:
+    if valid_user is None or get_role_id() != 2:
         toast('You must be a Power User to report incidents', color='warning')
         main()
         return
@@ -1531,6 +1562,81 @@ def delete_crime(crime_id):
     ], onclick=[confirm_delete, crime_report_feeds])
 
 
+#all crime notification screen
+@use_scope('ROOT', clear=True)
+def crime_noti_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None and get_role_id() == 3:
+        put_buttons([
+            {'label': 'Announce Crime Report', 'value': 'report_crime', 'color': 'success'},
+            {'label': 'My Notifications', 'value': 'own_noti_feeds', 'color': 'info'},
+            {'label': 'Manage Crime Reports', 'value': 'crime_report_feeds', 'color': 'warning'}
+        ], onclick=[report_crime, own_noti_feeds, crime_report_feeds]).style('float:right; margin-top: 12px')
+
+    put_html('<h2>Crime Notifications</h2>')
+
+    get_crime_noti()
+
+
+#own crime notifications screen
+@use_scope('ROOT', clear=True)
+def own_noti_feeds():
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None and get_role_id() == 3:
+        put_buttons([
+            {'label': 'Create a new crime notification', 'value': 'report_crime', 'color': 'success'},
+            {'label': 'My Notifications', 'value': 'own_noti_feeds', 'color': 'info'},
+            {'label': 'Manage Crime Reports', 'value': 'crime_report_feeds', 'color': 'warning'}
+        ], onclick=[report_crime, own_noti_feeds, crime_report_feeds]).style('float:right; margin-top: 12px')
+
+    put_html('<h2>Crime Notifications</h2>')
+
+    get_crime_noti(valid_user.id)
+
+#accessing the data from CrimeReport which is uploaded by the police to notify the users about the crime
+def get_crime_noti(user_id=None, role_id=None):
+    global valid_user
+    postBtnGroup = None
+
+    with Session() as sesh:
+        if user_id is not None:
+            notis = sesh.query(CrimeReport, User).join(User).filter(CrimeReport.user_id==user_id, User.role_id == 3).order_by(CrimeReport.id.desc()).limit(10).all()
+        else:
+            notis = sesh.query(CrimeReport, User).join(User).filter(User.role_id == 3).order_by(CrimeReport.id.desc()).limit(10).all()
+
+        notisCount = len(notis)
+        if notisCount == 0:
+            put_html('<p class="lead text-center">There is no crime report</p>')
+            return
+
+        for noti in notis:
+            notiDateTime = noti.date_time.strftime('%I:%M%p – %d %b, %Y')
+            put_html(f'''
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title" style="margin: 8px 0;">{noti.title}</h3>
+                    <p class="card-subtitle mt-0">{noti.category} at <strong>{noti.location}</strong></p>
+                </div>
+                <div class="card-body">    
+                    <p style="white-space: pre-wrap;">{noti.description}</p>
+                </div>
+                <div class="card-footer text-muted">
+                    Posted Time: {notiDateTime}
+                </div>
+            </div>
+            ''').style('margin-bottom: 10px')
+        if notisCount > 10:
+            put_html(f'<p class="text-center">View more posts</p>')
+
+
 @use_scope('ROOT')
 def edit_content():
     popup('Edit Content', [
@@ -1655,33 +1761,38 @@ def generate_nav():
     # global navigation buttons regardless of the user role
     globalNavBtns = [
         {'label': 'Home', 'value': 'home', 'color': 'primary'},
-        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
+        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'},
+        {'label': 'Crime Notification', 'value': 'police', 'color': 'danger'}
     ]
 
-    if valid_user is None or valid_user.role_id == 1:  # if the user registered (Standard User)
+    if valid_user is None or valid_user.role_id == 1 or valid_user.role_id == 3:  # if the user is unregistered or registered (Standard User) or a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
-            globalNavBtns[1]
-        ], onclick=[main, forum_feeds])
+            globalNavBtns[1],
+            globalNavBtns[2]
+        ], onclick=[main, forum_feeds, crime_noti_feeds])
     elif valid_user.role_id == 2:  # if the user is a Power User
         # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
+            globalNavBtns[2],
             {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
-        ], onclick=[main, forum_feeds, crime_report_feeds])
+        ], onclick=[main, forum_feeds, crime_noti_feeds, crime_report_feeds])
     elif valid_user.role_id == 3:  # if the user is a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-        ], onclick=[main, forum_feeds, main])
+            globalNavBtns[2],
+            {'label': 'Announce Crime Reports', 'value': 'manage_users', 'color': 'danger'}
+        ], onclick=[main, forum_feeds, crime_noti_feeds, report_crime])
     elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
+            globalNavBtns[2],
             {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-        ], onclick=[main, forum_feeds, main])
+        ], onclick=[main, forum_feeds, crime_noti_feeds, main])
 
 
 # function to generate a card from post data (dummy data for placeholder purpose)
