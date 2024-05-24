@@ -542,7 +542,7 @@ def forum_feeds():
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'},
-            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'warning'}
+            {'label': 'Moderate threads', 'value': 'view_all_threads', 'color': 'warning'}
         ], onclick=[create_thread, own_forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
     elif valid_user is not None:
         put_buttons([
@@ -565,7 +565,7 @@ def own_forum_feeds():
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'},
-            {'label': 'Reported threads', 'value': 'view_all_threads', 'color': 'warning'}
+            {'label': 'Moderate threads', 'value': 'view_all_threads', 'color': 'warning'}
         ], onclick=[create_thread, forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
     elif valid_user is not None:
         put_buttons([
@@ -864,7 +864,7 @@ def content_reports(thread_id=None):
             report_table_data.append([
                 report.id,
                 get_username(report.user_id)['display_name'],
-                report.associated_thread.title, report.associated_thread.flags,
+                report.associated_thread.title,
                 report.comment,
                 reportDateTime,
                 put_buttons([
@@ -877,7 +877,6 @@ def content_reports(thread_id=None):
             'ID',
             'Made by',
             'Reported Thread',
-            'Reported Count',
             'Reason',
             'Reported Date',
             'Actions'
