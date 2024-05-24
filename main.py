@@ -511,7 +511,7 @@ def own_post_feeds():
     put_html('<h2>Posts</h2>')
 
     get_posts(valid_user.id)
-    
+
 
 #accessing posts from ParkingPost
 def get_posts(user_id=None):
@@ -530,7 +530,8 @@ def get_posts(user_id=None):
             #we use use_scope function to later scroll to the post after adding a comment
             #we use the post.id as the scope to avoid conflicts with other posts
             with use_scope(f'post-{post.id}'):
-                if user_id is not None or (user_id is None and valid_user is not None and post.user_id == valid_user.id):
+                if user_id is not None or (
+                        user_id is None and valid_user is not None and post.user_id == valid_user.id):
                     postBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
@@ -555,14 +556,13 @@ def get_posts(user_id=None):
                 put_column([put_buttons([
                     {'label': 'Rate', 'value': 'add_rating', 'color': 'info'}
                 ], onclick=[partial(add_rating, post.id)], small=True)]),
-            put_column([postBtnGroup]).style('justify-content: end;')
+                put_column([postBtnGroup]).style('justify-content: end;')
             ])
         if postCount > 10:
             put_html(f'<p class="text-center">View more posts</p>')
 
 
-
-def add_rating(post_id=1):  # post_id need to be passed here by ivy (set default 1 for testing)
+def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1 for testing)
     popup('Rate this spot',
           [
               put_radio('rateLevels', [
@@ -649,6 +649,7 @@ def create_post():
     finally:
         post_feeds()
 
+
 #editing post from ParkingPost
 def edit_post(post_id):
     clear()
@@ -660,7 +661,8 @@ def edit_post(post_id):
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
-            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True, value=post.type),
+            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True,
+                  value=post.type),
             input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
@@ -707,6 +709,7 @@ def delete_post(post_id):
         #routing council staff to all posts feed and all other users to their own posts feed
         #because councils have the permission to delete any posts
         post_feeds() if valid_user.role_id == 4 else own_post_feeds()
+
 
 def get_avg_rating(post_id):
     total_rating = 0
@@ -1443,6 +1446,50 @@ def delete_crime(crime_id):
     ], onclick=[confirm_delete, crime_report_feeds])
 
 
+@use_scope('ROOT', clear=True)
+def notifications_panel():
+    """
+    This function will display the notifications panel for the user.
+    """
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Home'], onclick=[main]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Notifications</h2>')
+
+    if valid_user is None:
+        put_html('<p class="lead text-center">You need to login to view notifications</p>')
+        return
+
+    with Session() as sesh:
+        notifications = sesh.query(Notification).filter_by(user_id=valid_user.id).order_by(
+            Notification.date_time.desc()).all()
+        notificationCount = len(notifications)
+        if notificationCount == 0:
+            put_html('<p class="lead text-center">There is no notifications</p>')
+            return
+
+        notification_table_data = []
+        serialNum = 1
+        for notification in notifications:
+            notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')
+            notification_table_data.append([
+                serialNum,
+                notification.title,
+                notification.content,
+                notificationDateTime
+            ])
+            serialNum += 1
+        put_table(notification_table_data, header=[
+            'No',
+            'Title',
+            'Content',
+            'Date'
+        ])
+
+
 @use_scope('ROOT')
 def edit_content():
     popup('Edit Content', [
@@ -1593,7 +1640,7 @@ def generate_nav():
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-        ], onclick=[main, forum_feeds, main])
+        ], onclick=[main, forum_feeds, notifications_panel])
 
 
 # function to generate a card from post data (dummy data for placeholder purpose)
