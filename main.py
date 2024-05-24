@@ -539,7 +539,6 @@ def get_posts(user_id=None):
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title" style="margin: 8px 0;">{post.location} ({post.amt_slots})</h3>
-                    <p class="card-subtitle mt-0">By <strong>{get_username(post.user_id)["display_name"]}</strong> {get_user_badge(post.user_id)} at {postDateTime}</p>
                 </div>
                 <div class="card-body">
                     <h4 class="card-title" style="margin: 8px 0;">{post.type}</h3>    
