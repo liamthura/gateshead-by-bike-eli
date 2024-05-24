@@ -95,8 +95,6 @@ class ParkingPost(Base):
     content: Mapped[str]
     amt_slots: Mapped[int]
     ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post", cascade='all, delete')
-    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post",
-                                                          cascade='all, delete')
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
