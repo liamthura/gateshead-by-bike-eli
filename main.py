@@ -270,11 +270,13 @@ def user_login(username=None):
     clear()  # to clear previous data if there is
 
     def validate_username(username):
-        if re.match("^[a-zA-Z0-9_.-]+$", username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
+        if re.match("^[a-zA-Z0-9_.-]+$",
+                    username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
             return f'Username can only contain letters, numbers, ".", "_" and "-"'
 
     def validate_password(password):
-        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)", password) is None:  # check if password contains lowercase, uppercase and number
+        if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)",
+                    password) is None:  # check if password contains lowercase, uppercase and number
             toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error',
                   duration=3)
             return False
@@ -537,7 +539,8 @@ def get_posts(user_id=None):
         for post in posts:
             #we use the post.id as the scope to avoid conflicts with other posts
             with use_scope(f'post-{post.id}'):
-                if user_id is not None or (user_id is None and valid_user is not None and post.user_id == valid_user.id):
+                if user_id is not None or (
+                        user_id is None and valid_user is not None and post.user_id == valid_user.id):
                     postBtnGroup = put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
@@ -563,14 +566,14 @@ def get_posts(user_id=None):
                 put_column([put_buttons([
                     {'label': 'Rate', 'value': 'add_rating', 'color': 'info'}
                 ], onclick=[partial(add_rating, post.id)], small=True)]),
-            put_column([postBtnGroup]).style('justify-content: end;')
+                put_column([postBtnGroup]).style('justify-content: end;')
             ])
             postBtnGroup = None
         if postCount > 10:
             put_html(f'<p class="text-center">View more posts</p>')
 
 
-def add_rating():
+def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1 for testing)
     popup('Rate this spot',
           [
               put_radio('rateLevels', [
@@ -581,17 +584,23 @@ def add_rating():
                   {'label': '5', 'value': 5}
               ], label='Rate this spot', inline=True, help_text='1 - Least helpful, 5 - Most helpful'),
               put_textarea('comment', label='Feedback', placeholder='Say something', rows=2),
-              put_buttons(['Save', 'Cancel'], onclick=[save_rate, main])], closable=True)
+              put_buttons(['Save', 'Cancel'], onclick=[
+                  partial(save_rate, post_id),
+                  main])], closable=True)
 
-    if pin.rateLevels is None:
+
+def save_rate(post_id):  #saving the rating details to the database
+    global valid_user
+
+    # Get user input
+    rate_levels = pin.rateLevels
+    comment = pin.comment
+
+    if rate_levels is None:
         toast('Cannot rate without selecting any ratings.',
               position='center', color='#2188ff', duration=5)
-    else:
-        main()
+        return
 
-
-def save_rate(post_id, rateLevels, comment): #saving the rating details to the database
-    global valid_user
     if valid_user is None:
         user_id = None
     else:
@@ -600,12 +609,14 @@ def save_rate(post_id, rateLevels, comment): #saving the rating details to the d
     with Session() as sesh:
         rating = ParkingRating(post_id=post_id,
                                user_id=user_id,
-                               rating=rateLevels,
+                               rating=rate_levels,
                                comment=comment)
         sesh.add(rating)
         sesh.commit()
-
     close_popup()
+    toast('Rating saved successfully!', position='center', color='#2188ff', duration=6)
+
+    # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
 
 
@@ -759,6 +770,7 @@ def create_post():
     finally:
         post_feeds()
 
+
 #editing post from ParkingPost
 def edit_post(post_id):
     clear()
@@ -770,7 +782,8 @@ def edit_post(post_id):
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
-            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True, value=post.type),
+            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True,
+                  value=post.type),
             input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
@@ -1448,7 +1461,8 @@ def report_crime():
         if crime_data['crime_actions'] == 'report':
             with Session() as sesh:
                 new_crime = CrimeReport(user_id=valid_user.id, title=crime_data['title'],
-                                        category=crime_data['category'] if crime_data['category'] != 'other' else  # if the category is 'other', use the other input field
+                                        category=crime_data['category'] if crime_data[
+                                                                               'category'] != 'other' else  # if the category is 'other', use the other input field
                                         crime_data['other'],
                                         location=crime_data['location'], description=crime_data['content'],
                                         is_emergency=True if True in crime_data['emergency'] else False,
@@ -1458,7 +1472,7 @@ def report_crime():
     except ValueError as ve:
         toast(f'{str(ve)}', color='error')
     except SQLAlchemyError:
-        toast('An error occurred', color='error') # if there is an error in the database
+        toast('An error occurred', color='error')  # if there is an error in the database
     else:
         toast('Crime reported successfully', color='success')
     finally:
@@ -1527,7 +1541,7 @@ def view_crime(crime_id):
         ], header=[
             span(put_html(
                 f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
-                 col=2)])
+                col=2)])
 
         if get_role_id() == 4:  # if the user is a police staff, show the change status button
             put_buttons([
@@ -1560,6 +1574,50 @@ def delete_crime(crime_id):
         {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
     ], onclick=[confirm_delete, crime_report_feeds])
+
+
+@use_scope('ROOT', clear=True)
+def notifications_panel():
+    """
+    This function will display the notifications panel for the user.
+    """
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Home'], onclick=[main]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Notifications</h2>')
+
+    if valid_user is None:
+        put_html('<p class="lead text-center">You need to login to view notifications</p>')
+        return
+
+    with Session() as sesh:
+        notifications = sesh.query(Notification).filter_by(user_id=valid_user.id).order_by(
+            Notification.date_time.desc()).all()
+        notificationCount = len(notifications)
+        if notificationCount == 0:
+            put_html('<p class="lead text-center">There is no notifications</p>')
+            return
+
+        notification_table_data = []
+        serialNum = 1
+        for notification in notifications:
+            notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')
+            notification_table_data.append([
+                serialNum,
+                notification.title,
+                notification.content,
+                notificationDateTime
+            ])
+            serialNum += 1
+        put_table(notification_table_data, header=[
+            'No',
+            'Title',
+            'Content',
+            'Date'
+        ])
 
 
 @use_scope('ROOT')
@@ -1717,7 +1775,7 @@ def generate_nav():
             globalNavBtns[1],
             globalNavBtns[2],
             {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-        ], onclick=[main, forum_feeds, crime_noti_feeds, main])
+        ], onclick=[main, forum_feeds, notifications_panel])
 
 
 # function to generate a card from post data (dummy data for placeholder purpose)
