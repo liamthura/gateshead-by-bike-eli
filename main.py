@@ -24,6 +24,16 @@ Base = declarative_base()
 
 # Defining the User class with table name 'users'
 class User(Base):
+    """
+    User class to define the structure of the 'users' table
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: User ID, the primary key of the table
+    :var username: Username of the user, this must be unique
+    :var display_name: Display name of the user
+    :var password: Password of the user
+    :var role_id: Role of the user, Connect to roles table as a foreign key to the id of "roles" table
+    :var subscription_status: Subscription status of the user, default is False
+    """
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -42,6 +52,13 @@ class User(Base):
 
 
 class Role(Base):
+    """
+    Role class to define the structure of the 'roles' table
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Role ID, the primary key of the table
+    :var name: Name of the role, this must be unique
+    :var color: Color of the role for badge and other differentiation purposes, default is None. Uses color names from Bootstrap
+    """
     __tablename__ = 'roles'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -56,6 +73,18 @@ class Role(Base):
 
 # Defining the Post class with table name 'posts'
 class ParkingPost(Base):
+    """
+    ParkingPost class to define the structure of the 'posts' table -- for posts related to parking spots
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Post ID, the primary key of the table
+    :var date_time: Date and time of the post, default is the current date and time
+    :var user_id: User ID of the user who created the post, Connect to users table as a foreign key to the id of "users" table
+    :var location: Location of the parking spot
+    :var type: Type of the parking spot
+    :var content: Description / Content of the post
+    :var amt_slots: Number of available slots
+    :var ratings: List of ratings for the post, Connect to ratings table as a foreign key
+    """
     __tablename__ = 'posts'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -77,6 +106,16 @@ class ParkingPost(Base):
 
 
 class ParkingRating(Base):
+    """
+    ParkingRating class to define the structure of the 'ratings' table -- for ratings of parking spots
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Rating ID, the primary key of the table
+    :var post_id: Post ID of the post that is being rated, Connect to posts table as a foreign key to the id of "posts" table
+    :var user_id: User ID of the user who rated the post, Connect to users table as a foreign key to the id of "users" table
+    :var rating: Rating given by the user
+    :var comment: Comment given by the user, default is None
+    :var associated_post: List of posts associated with the rating, Connect to posts table as a foreign key
+    """
     __tablename__ = 'ratings'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -91,6 +130,20 @@ class ParkingRating(Base):
 
 
 class Thread(Base):
+    """
+    Thread class to define the structure of the 'threads' table -- for threads in the community forum
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Thread ID, the primary key of the table
+    :var user_id: User ID of the user who created the thread, Connect to users table as a foreign key to the id of "users" table
+    :var title: Title of the thread
+    :var content: Content of the thread
+    :var parent_id: Parent ID of the thread, default is None, This is for comments on a thread which all have a parent thread ID
+    :var date_time: Date and time of the thread, default is the current date and time
+    :var up_votes: Number of up votes for the thread
+    :var down_votes: Number of down votes for the thread
+    :var flags: Number of flags for the thread (i.e. reports made to the thread for inappropriate content)
+    :var reports: List of flags / reports for the thread, Connect to reports table as a foreign key
+    """
     __tablename__ = 'threads'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -110,6 +163,16 @@ class Thread(Base):
 
 
 class ContentReport(Base):
+    """
+    ContentReport class to define the structure of the 'content_reports' table -- for reports on threads in the community forum
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Report ID, the primary key of the table
+    :var user_id: User ID of the user who reported the thread, Connect to users table as a foreign key to the id of "users" table
+    :var thread_id: Thread ID of the thread that is reported, Connect to threads table as a foreign key to the id of "threads" table
+    :var comment: Comment given by the user for the report, default is None
+    :var date_time: Date and time of the report, default is the current date and time
+    :var associated_thread: List of threads associated with the report, Connect to threads table as a foreign key
+    """
     __tablename__ = 'content_reports'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -124,6 +187,19 @@ class ContentReport(Base):
 
 
 class CrimeReport(Base):
+    """
+    CrimeReport class to define the structure of the 'crime_reports' table -- for Power User and Police, about reports on crimes in the community
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Report ID, the primary key of the table
+    :var user_id: User ID of the user who reported the crime, Connect to users table as a foreign key to the id of "users" table
+    :var title: Title of the crime report
+    :var category: Category / Nature of the crime
+    :var location: Location of the crime
+    :var description: Description of the crime
+    :var date_time: Date and time of the report, default is the current date and time
+    :var is_emergency: Boolean to check if the report is an emergency, default is False
+    :var status: Status of the report, default is 'Pending'
+    """
     __tablename__ = 'crime_reports'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -141,6 +217,20 @@ class CrimeReport(Base):
 
 
 class Notification(Base):
+    """
+    Notification class to define the structure of the 'notifications' table --
+    for notifications (announcements) to users made by Police and Council
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Notification ID, the primary key of the table
+    :var user_id: User ID of the user who made / created the notification, Connect to users table as a foreign key to the id of "users" table
+    :var by_role_id: Role ID of the role that made / created the notification, Connect to roles table as a foreign key to the id of "roles" table
+    :var title: Title of the notification
+    :var content: Content of the notification
+    :var date_time: Date and time of the notification, default is the current date and time
+    :var category: Category of the notification (if it's an announcement, alert, etc.)
+    :var status: Status of the notification, default is 'Active'
+    :var creator: For joining the users table, Connect to users table as a foreign key
+    """
     __tablename__ = 'notifications'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -150,7 +240,7 @@ class Notification(Base):
     content: Mapped[str]
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     category: Mapped[str]
-    status: Mapped[str]
+    status: Mapped[str] = mapped_column(default='Active')
     creator: Mapped[list["User"]] = relationship("User", back_populates="notifications")
 
     def __repr__(self):
@@ -935,7 +1025,12 @@ def report_thread(thread_id):
                 )
 
 
+@use_scope('ROOT', clear=True)
 def crime_report_feeds():
+    """
+    This function will display all the police reports made by the user.
+    If the user is a police staff, it will display all the police reports made by all users.
+    """
     clear()
     global valid_user
 
@@ -946,20 +1041,31 @@ def crime_report_feeds():
     ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
     put_html('<h2>My Police Reports</h2>')
 
+    # initialise the crime table data
     crime_table_data = []
-    seriesNum = 1
+    seriesNum = 1  # for numbering the rows
     try:
-        with Session() as sesh:
-            crimes = sesh.query(CrimeReport).filter_by(user_id=get_user_id()).all()
-            crimeCount = len(crimes)
-            if crimeCount == 0:
-                put_html('<p class="lead text-center">There is no police reports</p>')
-                return
+        if valid_user is None:
+            raise ValueError('You need to login to view police reports')
+        elif valid_user.id == 3:  # police staff
+            with Session() as sesh:
+                crimes = sesh.query(CrimeReport).all()
+                crimeCount = len(crimes)
+                if crimeCount == 0:
+                    put_html('<p class="lead text-center">There is no police reports</p>')
+                    return
+        else:  # all other users
+            with Session() as sesh:
+                crimes = sesh.query(CrimeReport).filter_by(user_id=valid_user.id).all()
+                crimeCount = len(crimes)
+                if crimeCount == 0:
+                    put_html('<p class="lead text-center">There is no police reports</p>')
+                    return
     except SQLAlchemyError:
         toast('An error occurred', color='error')
     else:
         for crime in crimes:
-            crimeDateTime = crime.date_time.strftime('%d %b, %Y')
+            crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
             crime_table_data.append([
                 seriesNum,
                 crime.id,
@@ -968,7 +1074,7 @@ def crime_report_feeds():
                 crimeDateTime,
                 crime.status,
                 put_buttons([
-                    {'label': 'View', 'value': 'edit', 'color': 'primary'},
+                    {'label': 'View', 'value': 'view', 'color': 'primary'},
                     {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
                 ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
             ])
@@ -984,9 +1090,18 @@ def crime_report_feeds():
         ])
 
 
+@use_scope('ROOT', clear=True)
 def report_crime():
+    """
+    This is the screen for reporting a crime for Power Users through a form.
+    """
     clear()
     global valid_user
+
+    if valid_user is None or get_role_id() != 3:
+        toast('You must be a Power User to report incidents', color='warning')
+        main()
+        return
 
     generate_header()
     generate_nav()
@@ -994,7 +1109,9 @@ def report_crime():
     put_html('<h2>Report a Crime</h2>')
 
     reportCrimeFields = [
-        input('Title', name='title', required=True),
+        input('Title', name='title', required=True, maxlength=50),
+        # this select field is made to show an "Other" option,
+        # which will show an input field when selected by using input_update() function
         select('Nature of Crime', ['Theft', 'Assault', 'Vandalism', 'Other'
                                    ], name='category', required=True, value='Theft',
                onchange=lambda c: input_update('other', placeholder='Please specify', hidden=False,
@@ -1015,11 +1132,11 @@ def report_crime():
 
     try:
         if crime_data is None:
-            raise ValueError('Crime report cancelled')
+            raise ValueError('Crime report cancelled')  # raise an error if the user cancels the report
         if crime_data['crime_actions'] == 'report':
             with Session() as sesh:
                 new_crime = CrimeReport(user_id=valid_user.id, title=crime_data['title'],
-                                        category=crime_data['category'] if crime_data['category'] != 'other' else
+                                        category=crime_data['category'] if crime_data['category'] != 'other' else  # if the category is 'other', use the other input field
                                         crime_data['other'],
                                         location=crime_data['location'], description=crime_data['content'],
                                         is_emergency=True if True in crime_data['emergency'] else False,
@@ -1029,19 +1146,29 @@ def report_crime():
     except ValueError as ve:
         toast(f'{str(ve)}', color='error')
     except SQLAlchemyError:
-        toast('An error occurred', color='error')
+        toast('An error occurred', color='error') # if there is an error in the database
     else:
         toast('Crime reported successfully', color='success')
     finally:
         crime_report_feeds()
 
 
+@use_scope('ROOT', clear=True)
 def view_crime(crime_id):
+    """
+    This function will display the details of a crime report.
+    :param crime_id: The ID of the crime report to be viewed.
+    """
+
     clear()
 
-    current_crime_status = None
+    current_crime_status = None  # to store the current status of the crime report
 
     def change_crime_status():
+        """
+        This function will allow the Police User to change the status of the crime report
+        within individual crime report.
+        """
         new_status = input_group('Change Status', [
             select('New Status', ["Pending", "Under Investigation", "Action Taken", "Closed"], name='status',
                    required=True, value=current_crime_status),
@@ -1055,15 +1182,15 @@ def view_crime(crime_id):
             if new_status['status_actions'] == 'change':
                 new_status = new_status['status']
                 with Session() as sesh:
-                    crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
-                    crime.status = new_status
-                    sesh.add(crime)
+                    selected_crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
+                    selected_crime.status = new_status
+                    sesh.add(selected_crime)
                     sesh.commit()
                 toast(f'Crime report status has been changed to "{new_status}"', color='success')
                 clear()
                 view_crime(crime_id)
             elif new_status['status_actions'] == 'cancel':
-                clear()
+                clear()  # clear the screen if the user cancels the status change so that the input field goes away
                 view_crime(crime_id)
 
     generate_header()
@@ -1073,7 +1200,7 @@ def view_crime(crime_id):
 
     with Session() as sesh:
         crime = sesh.query(CrimeReport).filter_by(id=crime_id).first()
-        current_crime_status = crime.status
+        current_crime_status = crime.status  # store the current status of the crime report to be used outside the session
         crimeDateTime = crime.date_time.strftime('%I:%M%p – %d %b, %Y')
         put_table([
             ['Reference ID', crime.id],
@@ -1086,17 +1213,23 @@ def view_crime(crime_id):
             ['Nature of Crime', crime.category],
             ['Status', crime.status]
         ], header=[
-            span(put_html(f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
+            span(put_html(
+                f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
                  col=2)])
 
-        if get_role_id() == 4:
+        if get_role_id() == 4:  # if the user is a police staff, show the change status button
             put_buttons([
                 {'label': 'Change Status', 'value': 'edit', 'color': 'primary'},
                 {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
             ], onclick=[change_crime_status, partial(delete_crime, crime.id)])
 
 
+@use_scope('ROOT', clear=True)
 def delete_crime(crime_id):
+    """
+    This function will delete the crime report of a given ID.
+    :param crime_id: The ID of the crime report to be deleted.
+    """
     clear()
 
     generate_header()
@@ -1125,9 +1258,12 @@ def edit_content():
     ], closable=True)
 
 
-# function that switches between dark and light mode
-# we used pywebio config to save lines of css codes
 def toggle_dark_mode():
+    """
+    This function toggles between dark and light mode
+    by using the pywebio config function to change the theme.
+    :return:
+    """
     global dark_mode
     dark_mode = not dark_mode
     if dark_mode:
@@ -1139,6 +1275,11 @@ def toggle_dark_mode():
 
 
 def smaller_font():
+    """
+    This function decreases the font size of the text on the page
+    by using the run_js function of pywebio.session module to run JavaScript code that decreases the font size.
+    :return:
+    """
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
         let allElements = document.querySelectorAll('p,h2,h3,h4,h5,h6,label,input');
@@ -1152,6 +1293,7 @@ def smaller_font():
             }}
         }});
     '''
+    # allow the user to decrease the font size only 5 times smaller than the original size
     if smaller_font_clicks < 5:
         smaller_font_clicks += 1
         bigger_font_clicks -= 1
@@ -1160,6 +1302,10 @@ def smaller_font():
 
 
 def bigger_font():
+    """
+    This function increases the font size of the text on the page
+    by using the run_js function of pywebio.session module to run JavaScript code that increases the font size.
+    """
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
             let allElements = document.querySelectorAll('p, h2, h3, h4, h5, h6,label,input');
@@ -1173,6 +1319,7 @@ def bigger_font():
                 }}
             }});
         '''
+    # allow the user to increase the font size only 6 times bigger than the original size
     if bigger_font_clicks < 6:
         bigger_font_clicks += 1
         smaller_font_clicks -= 1
@@ -1181,8 +1328,12 @@ def bigger_font():
 
 
 def generate_header():
+    """
+    This function generates the header of the page.
+    The function can be used to structure a consistent header for every page.
+    """
     global smaller_font_clicks, bigger_font_clicks
-    smaller_font_clicks, bigger_font_clicks = 0, 0
+    smaller_font_clicks, bigger_font_clicks = 0, 0  # initialise the font size click counters
     put_buttons([
         {'label': 'Aa+', 'value': 'bigger', 'color': 'primary'},
         {'label': 'Aa-', 'value': 'smaller', 'color': 'info'},
@@ -1191,20 +1342,25 @@ def generate_header():
         'float:right')
     put_html(f'''
         <h1>
-        Welcome to GBB-ELI
-        <p class="h5">A parking lot social platform for Gateshead Bike Users</p>
+        Welcome to Gateshead By Bike
+        <p class="h5">A social platform for Gateshead bike users</p>
         </h1>
         ''')
 
 
 def generate_nav():
+    """
+    This function generates the navigation bar of the page.
+    Navigation bar will be different based on the role of the user.
+    The function can be used to structure a consistent navigation bar for every page.
+    """
     global valid_user
-    if valid_user is None:
+    if valid_user is None:  # if the user is not logged in (guest users)
         put_buttons([
             {'label': 'Login / Register', 'value': 'login', 'color': 'primary'},
         ], onclick=[user_login]).style("float:right; margin-left:20px; margin-top: -5px;")
         put_html(f'<p class="lead">Hello, <span class="font-weight-bold">Guest User</span></p>').style('float:right;')
-    else:
+    else:  # if the user is logged in (all registered users)
         put_buttons([
             {'label': 'Logout', 'value': 'login', 'color': 'danger'},
         ], onclick=[user_logout]).style("float:right; margin-left:20px;")
@@ -1215,30 +1371,31 @@ def generate_nav():
             ''').style(
             'float:right; text-align:right;')
 
+    # global navigation buttons regardless of the user role
     globalNavBtns = [
         {'label': 'Home', 'value': 'home', 'color': 'primary'},
         {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
     ]
 
-    if valid_user is None or valid_user.role_id == 1:
+    if valid_user is None or valid_user.role_id == 1:  # if the user registered (Standard User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1]
         ], onclick=[main, forum_feeds])
-    elif valid_user.role_id == 2:
+    elif valid_user.role_id == 2:  # if the user is a Power User
         # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
         ], onclick=[main, forum_feeds, crime_report_feeds])
-    elif valid_user.role_id == 3:
+    elif valid_user.role_id == 3:  # if the user is a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
             {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
         ], onclick=[main, forum_feeds, main])
-    elif valid_user.role_id == 4:
+    elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
@@ -1246,7 +1403,7 @@ def generate_nav():
         ], onclick=[main, forum_feeds, main])
 
 
-# function to generate a card from post data
+# function to generate a card from post data (dummy data for placeholder purpose)
 def generate_card(post):
     put_html(f'''
         <div class="card">
@@ -1268,6 +1425,11 @@ def generate_card(post):
 
 
 def get_user_badge(user_id=None):
+    """
+    This function returns a badge of the use based on their role.
+    :param user_id: The ID of the user to get the badge of.
+    :return:
+    """
     if user_id is not None:
         return f'<span class="badge bg-{get_role_color(get_role_id(user_id))} text-light">{get_role_name(user_id)}</span>'
     else:
