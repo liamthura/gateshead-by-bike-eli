@@ -1307,7 +1307,6 @@ def crime_report_feeds():
         ])
 
 
-@use_scope('ROOT', clear=True)
 def report_crime():
     """
     This is the screen for reporting a crime for Power Users through a form.
