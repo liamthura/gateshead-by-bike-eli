@@ -676,7 +676,7 @@ def edit_post(post_id):
                 {'label': 'Corral', 'value': 'Corral'},
                 {'label': 'Indoor', 'value': 'Indoor'}
             ], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount', min='0', required=True, value=post.amt_slots),
+            input('Amount of Available Space', name='amount', type=NUMBER, min='0', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
