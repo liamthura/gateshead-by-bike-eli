@@ -94,7 +94,8 @@ class ParkingPost(Base):
     type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
-    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post", cascade='all, delete')
+    ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post",
+                                                          cascade='all, delete')
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
@@ -392,8 +393,6 @@ def get_user_id(username=None):
 
 def get_username(user_id=None):
     global valid_user
-    username = None
-    display_name = None
     if valid_user is not None and user_id is None:
         return valid_user.username
     elif user_id is not None:
@@ -471,7 +470,7 @@ def main():
     # put_buttons(['Login', 'Register'], onclick=[login, register])
 
 
-#all posts screen
+# all posts screen
 @use_scope('ROOT', clear=True)
 def post_feeds():
     clear()
@@ -494,7 +493,7 @@ def post_feeds():
     get_posts()
 
 
-#own posts screen
+# own posts screen
 @use_scope('ROOT', clear=True)
 def own_post_feeds():
     clear()
@@ -512,7 +511,7 @@ def own_post_feeds():
     get_posts(valid_user.id)
 
 
-#accessing posts from ParkingPost
+# accessing posts from ParkingPost
 def get_posts(user_id=None):
     global valid_user
     postBtnGroup = None
@@ -529,7 +528,7 @@ def get_posts(user_id=None):
             return
 
         for post in posts:
-            #we use the post.id as the scope to avoid conflicts with other posts
+            # we use the post.id as the scope to avoid conflicts with other posts
             with use_scope(f'post-{post.id}'):
                 if user_id is not None or (
                         user_id is None and valid_user is not None and post.user_id == valid_user.id):
@@ -581,7 +580,7 @@ def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1
                   main])], closable=True)
 
 
-def save_rate(post_id):  #saving the rating details to the database
+def save_rate(post_id):  # saving the rating details to the database
     global valid_user
 
     # Get user input
@@ -612,7 +611,7 @@ def save_rate(post_id):  #saving the rating details to the database
     main()
 
 
-#saving post to ParkingPost
+# saving post to ParkingPost
 def create_post():
     clear()
     global valid_user
@@ -658,7 +657,8 @@ def create_post():
     finally:
         post_feeds()
 
-#editing post from ParkingPost
+
+# editing post from ParkingPost
 def edit_post(post_id):
     clear()
 
@@ -670,7 +670,7 @@ def edit_post(post_id):
         updatePostFields = [
             input('Location', name='location', required=True, value=post.location),
             select('Type', options=[
-                {'label': 'Rack', 'value': 'Rack', 'selected': True},
+                {'label': 'Rack', 'value': 'Rack'},
                 {'label': 'Locker', 'value': 'Locker'},
                 {'label': 'Shelter', 'value': 'Shelter'},
                 {'label': 'Corral', 'value': 'Corral'},
@@ -707,217 +707,7 @@ def edit_post(post_id):
         return
 
 
-#deleting post from ParkingPost
-def delete_post(post_id):
-    clear()
-    generate_header()
-
-    def confirm_delete():
-        with Session() as sesh:
-            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
-            sesh.delete(post)
-            sesh.commit()
-        toast(f'The post at {post.location} has been deleted', color='success')
-        #routing council staff to all posts feed and all other users to their own posts feed
-        #because councils have the permission to delete any posts
-        post_feeds() if valid_user.role_id == 4 else own_post_feeds()
-
-#saving post to ParkingPost
-def create_post():
-    clear()
-    global valid_user
-
-    generate_header()
-    generate_nav()
-    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Create a new post</h2>')
-
-    createPostFields = [
-        input('Location', name='location', required=True),
-        select('Type', options=[
-            {'label': 'Rack', 'value': 'Rack', 'selected': True},
-            {'label': 'Locker', 'value': 'Locker'},
-            {'label': 'Shelter', 'value': 'Shelter'},
-            {'label': 'Corral', 'value': 'Corral'},
-            {'label': 'Indoor', 'value': 'Indoor'}
-        ], name='type', required=True),
-        input('Amount of Available Space', name='amount', min='0', required=True),
-        textarea('Content', name='content', required=True, wrap='hard'),
-        actions('', [
-            {'label': 'Create', 'value': 'create', 'type': 'submit'},
-            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-        ], name='post_actions')
-    ]
-
-    post_data = input_group('Create Post', createPostFields, cancelable=True)
-    try:
-        if post_data is None:
-            raise ValueError('Post creation cancelled')
-        if post_data['post_actions'] == 'create':
-            with Session() as sesh:
-                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
-                                       amt_slots=post_data['amount'], content=post_data['content'])
-                sesh.add(new_post)
-                sesh.commit()
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Post created successfully', color='success')
-    finally:
-        post_feeds()
-
-#editing post from ParkingPost
-def edit_post(post_id):
-    clear()
-
-    generate_header()
-    generate_nav()
-
-    with Session() as sesh:
-        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
-        updatePostFields = [
-            input('Location', name='location', required=True, value=post.location),
-            select('Type', options=[
-                {'label': 'Rack', 'value': 'Rack', 'selected': True},
-                {'label': 'Locker', 'value': 'Locker'},
-                {'label': 'Shelter', 'value': 'Shelter'},
-                {'label': 'Corral', 'value': 'Corral'},
-                {'label': 'Indoor', 'value': 'Indoor'}
-            ], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount', min='0', required=True, value=post.amt_slots),
-            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
-            actions('', [
-                {'label': 'Update', 'value': 'update', 'type': 'submit'},
-                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-            ], name='post_actions')
-        ]
-    post_data = input_group('Edit Post', updatePostFields, cancelable=True)
-    try:
-        if post_data is None:
-            raise ValueError('Post not updated')
-        if post_data['post_actions'] == 'update':
-            with Session() as sesh:
-                post.location = post_data['location']
-                post.type = post_data['type']
-                post.amt_slots = post_data['amount']
-                post.content = post_data['content']
-                sesh.add(post)
-                sesh.commit()
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Post updated successfully', color='success')
-    finally:
-        post_feeds()
-        scroll_to(f'post-{post_id}', position='middle')
-        return
-
-
-#deleting post from ParkingPost
-def delete_post(post_id):
-    clear()
-    generate_header()
-
-    def confirm_delete():
-        with Session() as sesh:
-            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
-            sesh.delete(post)
-            sesh.commit()
-        toast(f'The post at {post.location} has been deleted', color='success')
-        #routing council staff to all posts feed and all other users to their own posts feed
-        #because councils have the permission to delete any posts
-        post_feeds() if valid_user.role_id == 4 else own_post_feeds()
-
-#saving post to ParkingPost
-def create_post():
-    clear()
-    global valid_user
-
-    generate_header()
-    generate_nav()
-    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Create a new post</h2>')
-
-    createPostFields = [
-        input('Location', name='location', required=True),
-        radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True),
-        input('Amount of Available Space', name='amount', required=True),
-        textarea('Content', name='content', required=True, wrap='hard'),
-        actions('', [
-            {'label': 'Create', 'value': 'create', 'type': 'submit'},
-            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-        ], name='post_actions')
-    ]
-
-    post_data = input_group('Create Post', createPostFields, cancelable=True)
-    try:
-        if post_data is None:
-            raise ValueError('Post creation cancelled')
-        if post_data['post_actions'] == 'create':
-            with Session() as sesh:
-                new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
-                                       amt_slots=post_data['amount'], content=post_data['content'])
-                sesh.add(new_post)
-                sesh.commit()
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Post created successfully', color='success')
-    finally:
-        post_feeds()
-
-
-#editing post from ParkingPost
-def edit_post(post_id):
-    clear()
-
-    generate_header()
-    generate_nav()
-
-    with Session() as sesh:
-        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
-        updatePostFields = [
-            input('Location', name='location', required=True, value=post.location),
-            radio('Type', options=['Racks', 'Lockers', 'Shelters', 'Corrals', 'Indoor'], name='type', required=True,
-                  value=post.type),
-            input('Amount of Available Space', name='amount', required=True, value=post.amt_slots),
-            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
-            actions('', [
-                {'label': 'Update', 'value': 'update', 'type': 'submit'},
-                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-            ], name='post_actions')
-        ]
-    post_data = input_group('Edit Post', updatePostFields, cancelable=True)
-    try:
-        if post_data is None:
-            raise ValueError('Post not updated')
-        if post_data['post_actions'] == 'update':
-            with Session() as sesh:
-                post.location = post_data['location']
-                post.type = post_data['type']
-                post.amt_slots = post_data['amount']
-                post.content = post_data['content']
-                sesh.add(post)
-                sesh.commit()
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Post updated successfully', color='success')
-    finally:
-        post_feeds()
-        scroll_to(f'post-{post_id}', position='middle')
-        return
-
-
-#deleting post from ParkingPost
+# deleting post from ParkingPost
 def delete_post(post_id):
     clear()
 
@@ -929,19 +719,18 @@ def delete_post(post_id):
             sesh.delete(post)
             sesh.commit()
         toast(f'The post at {post.location} has been deleted', color='success')
-        #routing council staff to all posts feed and all other users to their own posts feed
-        #because councils have the permission to delete any posts
+        # routing council staff to all posts feed and all other users to their own posts feed
+        # because councils have the permission to delete any posts
         post_feeds() if valid_user.role_id == 4 else own_post_feeds()
 
-    with Session() as sesh:
-        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
     put_warning(put_markdown(f'''## Warning!
-                                Are you sure you want to delete the post. This action cannot be undone.''' ))
+                                Are you sure you want to delete the post. This action cannot be undone.'''))
 
     put_buttons([
         {'label': 'Yes, confirm delete', 'value': 'confirm', 'color': 'danger'},
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
     ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds()])
+
 
 def get_avg_rating(post_id):
     total_rating = 0
@@ -949,7 +738,7 @@ def get_avg_rating(post_id):
         rating_post = sesh.query(ParkingRating).filter_by(post_id=post_id).all()
         post_count = len(rating_post)
 
-        #when no rating is detected
+        # when no rating is detected
         if post_count == 0:
             return None
         else:
