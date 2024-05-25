@@ -708,6 +708,7 @@ def edit_post(post_id):
 
 
 # deleting post from ParkingPost
+
 def delete_post(post_id):
     clear()
 
@@ -729,7 +730,7 @@ def delete_post(post_id):
     put_buttons([
         {'label': 'Yes, confirm delete', 'value': 'confirm', 'color': 'danger'},
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
-    ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds()])
+    ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds])
 
 
 def get_avg_rating(post_id):
