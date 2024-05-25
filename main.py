@@ -12,7 +12,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
 
-dataFile = pd.read_csv('db/roles.csv')
+rolesImport = pd.read_csv('db/roles.csv')
+locationsImport = pd.read_csv('db/locations.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -275,7 +276,10 @@ Base.metadata.create_all(db)
 # Inserting default user roles into the roles table if it is empty
 with Session() as sesh:
     if sesh.query(Role).count() == 0:
-        dataFile.to_sql('roles', db, if_exists='append', index=False)
+        rolesImport.to_sql('roles', db, if_exists='append', index=False)
+    if sesh.query(Location).count() == 0:
+        locationsImport.to_sql('locations', db, if_exists='append', index=False)
+
 
 # defining global variables to keep track of font size changes
 smaller_font_clicks = 0
