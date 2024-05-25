@@ -630,7 +630,7 @@ def create_post():
             {'label': 'Corral', 'value': 'Corral'},
             {'label': 'Indoor', 'value': 'Indoor'}
         ], name='type', required=True),
-        input('Amount of Available Space', name='amount', min='0', required=True),
+        input('Amount of Available Space', type=NUMBER, name='amount', min='0', required=True),
         textarea('Content', name='content', required=True, wrap='hard'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
