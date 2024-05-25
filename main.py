@@ -488,7 +488,7 @@ def post_feeds():
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'}
         ], onclick=[create_post]).style('float:right; margin-top: 12px')
 
-    put_html('<h2>Posts</h2>')
+    put_html('<h2>Recent Parking Posts</h2>')
 
     get_posts()
 
@@ -506,7 +506,7 @@ def own_post_feeds():
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
             {'label': 'All posts', 'value': 'post_feeds', 'color': 'info'}
         ], onclick=[create_post, post_feeds]).style('float:right; margin-top: 12px')
-    put_html('<h2>Posts</h2>')
+    put_html('<h2>My Parking Posts</h2>')
 
     get_posts(valid_user.id)
 
@@ -542,14 +542,14 @@ def get_posts(user_id=None):
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title" style="margin: 8px 0;">{post.location}</h3>
-                    <p class="card-subtitle mt-0">Amount of Spaces: <strong>({post.amt_slots})</strong> at {postDateTime}</p>
+                    <p class="card-subtitle mt-0">Amount of Spaces: <strong>{post.amt_slots}</strong> at {postDateTime}</p>
                 </div>
                 <div class="card-body">
-                    <h4 class="card-title" style="margin: 8px 0;">{post.type}</h3>    
+                    <h4 class="card-title" style="margin: 8px 0;">Parking Slot Type: <span class="">{post.type}</span></h4>    
                     <p style="white-space: pre-wrap;">{post.content}</p>
                 </div>
                 <div class="card-footer text-muted">
-                    Rating: {get_avg_rating(post.id)}
+                    Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}
                 </div>
             </div>
             ''').style('margin-bottom: 10px;')
@@ -577,7 +577,7 @@ def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1
               put_textarea('comment', label='Feedback', placeholder='Say something', rows=2),
               put_buttons(['Save', 'Cancel'], onclick=[
                   partial(save_rate, post_id),
-                  main])], closable=True)
+                  close_popup])], closable=True)
 
 
 def save_rate(post_id):  # saving the rating details to the database
@@ -745,7 +745,7 @@ def get_avg_rating(post_id):
             for rating in rating_post:
                 total_rating += rating.rating
             avg_result = total_rating / post_count
-            return avg_result
+            return round(avg_result, 1)
 
 
 @use_scope('ROOT', clear=True)
