@@ -676,7 +676,7 @@ def edit_post(post_id):
                 {'label': 'Corral', 'value': 'Corral'},
                 {'label': 'Indoor', 'value': 'Indoor'}
             ], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount', type=NUMBER, min='0', required=True, value=post.amt_slots),
+            input('Amount of Available Space', name='amount',type=NUMBER, min='0', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
@@ -1253,10 +1253,17 @@ def crime_report_feeds():
 
     generate_header()
     generate_nav()
-    put_buttons([
-        {'label': 'Report a Crime', 'value': 'report_crime', 'color': 'success'}
-    ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
-    put_html('<h2>My Police Reports</h2>')
+
+    if valid_user is not None and valid_user.id == 3: # police staff
+        put_buttons([
+            {'label': 'Emergency Crime Reports', 'value': 'crime_report_feeds_by_emergency', 'color': 'danger'}
+        ], onclick=[crime_report_feeds_by_emergency]).style('float:right; margin-top: 12px;')
+        put_html('<h2>All Crime Reports</h2>')
+    else: # all other users
+        put_buttons([
+            {'label': 'Report a Crime', 'value': 'report_crime', 'color': 'success'}
+        ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
+        put_html('<h2>My Police Reports</h2>')
 
     # initialise the crime table data
     crime_table_data = []
@@ -1283,6 +1290,63 @@ def crime_report_feeds():
     else:
         for crime in crimes:
             crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
+            row = [
+                seriesNum,
+                crime.title,
+                crime.category,
+                crimeDateTime,
+                crime.status,
+                put_buttons([
+                    {'label': 'View', 'value': 'view', 'color': 'primary'},
+                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
+            ]
+            if valid_user.id == 3: # showing crime ID only for the police user
+                row.insert(1, crime.id)
+
+            crime_table_data.append(row)
+            seriesNum += 1
+
+        header=[
+            'No',
+            'Title',
+            'Nature',
+            'Date',
+            'Status',
+            'Action'
+        ]
+        if valid_user.id == 3:
+            header.insert(1, 'Ref ID')
+
+        put_table(crime_table_data, header=header)
+
+
+def crime_report_feeds_by_emergency():
+    clear()
+    global valid_user
+    if valid_user is None or get_role_id() != 3:
+        toast('You do not have permisiion to view this page', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+    put_buttons([
+        {'label': 'All Crime Reports', 'value': 'crime_report_feeds', 'color': 'secondary'}
+    ], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Emergency Reports</h2>')
+
+    crime_table_data = []
+    with Session() as sesh:
+        crimes = sesh.query(CrimeReport).filter(CrimeReport.is_emergency == True).all()
+        crimeCount = len(crimes)
+        if crimeCount == 0:
+            put_html('<p class="lead text-center">There is no police reports</p>')
+            return
+
+        seriesNum = 1  # for numbering the rows
+        for crime in crimes:
+            crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
             crime_table_data.append([
                 seriesNum,
                 crime.id,
@@ -1296,6 +1360,7 @@ def crime_report_feeds():
                 ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
             ])
             seriesNum += 1
+
         put_table(crime_table_data, header=[
             'No',
             'Ref ID',
@@ -1434,7 +1499,7 @@ def view_crime(crime_id):
                 f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
                 col=2)])
 
-        if get_role_id() == 4:  # if the user is a police staff, show the change status button
+        if get_role_id() == 3:  # if the user is a police staff, show the change status button
             put_buttons([
                 {'label': 'Change Status', 'value': 'edit', 'color': 'primary'},
                 {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
@@ -1654,8 +1719,8 @@ def generate_nav():
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-        ], onclick=[main, forum_feeds, main])
+            {'label': 'Manage Crime Reports', 'value': 'crime_reports', 'color': 'danger'}
+        ], onclick=[main, forum_feeds, crime_report_feeds])
     elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
