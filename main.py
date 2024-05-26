@@ -2088,11 +2088,10 @@ def council_create_update():
             {'label': 'My announcements', 'value': 'view_own_announcements', 'color': 'info'},
         ], onclick=[create_announcement, view_own_announcements]).style('float:right; margin-top: 12px;')
     else:
-        put_buttons([
-            {'label': 'View announcements', 'value': 'view_announcements', 'color': 'info'},
-        ], onclick=view_announcements).style('float:right; margin-top: 12px;')
-        put_html('<h2>Announcements</h2>')
-        get_announcements()
+        '''if the user is not a council staff'''
+
+    put_html('<h2>Announcements</h2>')
+    get_announcements()
 
 
 def create_announcement():
@@ -2191,17 +2190,31 @@ def get_announcements(user_id=None):
 
 
 def view_own_announcements():
-    pass
+    #this is the page for council staff to view their own announcements
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_html('<h2>My Announcements</h2>')
+    get_announcements(valid_user.id)
+
 
 def edit_announcement(announcement_id):
-    pass
+    #ONLY available to edit the announcement created by the owner
+    clear()
+    global valid_user
+    generate_header()
+    generate_nav()
+
+
 
 def delete_announcement(announcement_id):
-    pass
-
-def view_announcements():
-    pass
-
+    #ONLY available to delete the announcement created by the owner
+    clear()
+    global valid_user
+    generate_header()
+    generate_nav()
 
 def council_manage_updates():
     clear()
