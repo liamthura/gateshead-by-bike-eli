@@ -738,6 +738,7 @@ def save_rate(post_id):  # saving the rating details to the database
 
     # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
+    scroll_to(f'post-{post_id}', position='middle')  # scroll to the post after rating
 
 
 # saving post to ParkingPost
