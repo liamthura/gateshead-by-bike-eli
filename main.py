@@ -247,6 +247,28 @@ class Notification(Base):
         return f"<SiteNotification(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
+class Response(Base):
+    """
+        Response class to define the structure of the 'response' table --
+        for Power User and Police, about responses on crime reports
+        :param Base: Base class from SQLAlchemy to inherit from
+        :var id: Response ID, the primary key of the table
+        :var user_id: User ID of the user who made / created the response, Connect to users table as a foreign key to the id of "users" table
+        :var crime_report_id: Crime Report ID by which the response is made, Connect to crime_reports table as a foreign key to the id of "crime_reports" table
+        :var date_time: Date and time of the response, default is the current date and time
+        :var message: Message of the response
+        """
+    __tablename__ = 'responses'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    crime_report_id: Mapped[int] = mapped_column(ForeignKey("crime_reports.id"))
+    date_time: Mapped[datetime] = mapped_column(default=datetime.now())
+    message: Mapped[str]
+
+    def __repr__(self):
+        return f"<PoliceResponse(id={self.id}, user_id={self.user_id}, crime_report_id={self.crime_report_id})>"
+
 Base.metadata.create_all(db)
 
 # Inserting default user roles into the roles table if it is empty
@@ -263,6 +285,9 @@ dark_mode = False
 
 # define a global variable to store if the user has a valid login
 valid_user = None
+
+# define a global variable to store the current response status of the crime report
+current_response = False
 
 
 def user_login(username=None):
@@ -676,7 +701,7 @@ def edit_post(post_id):
                 {'label': 'Corral', 'value': 'Corral'},
                 {'label': 'Indoor', 'value': 'Indoor'}
             ], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount',type=NUMBER, min='0', required=True, value=post.amt_slots),
+            input('Amount of Available Space', name='amount', type=NUMBER, min='0', required=True, value=post.amt_slots),
             textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
@@ -1290,8 +1315,9 @@ def crime_report_feeds():
     else:
         for crime in crimes:
             crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
-            row = [
+            crime_table_data.append([
                 seriesNum,
+                crime.id,
                 crime.title,
                 crime.category,
                 crimeDateTime,
@@ -1300,32 +1326,25 @@ def crime_report_feeds():
                     {'label': 'View', 'value': 'view', 'color': 'primary'},
                     {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
                 ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
-            ]
-            if valid_user.id == 3: # showing crime ID only for the police user
-                row.insert(1, crime.id)
-
-            crime_table_data.append(row)
+            ])
             seriesNum += 1
 
-        header=[
+        put_table(crime_table_data, header=[
             'No',
+            'Ref ID',
             'Title',
             'Nature',
             'Date',
             'Status',
             'Action'
-        ]
-        if valid_user.id == 3:
-            header.insert(1, 'Ref ID')
-
-        put_table(crime_table_data, header=header)
+        ])
 
 
 def crime_report_feeds_by_emergency():
     clear()
     global valid_user
     if valid_user is None or get_role_id() != 3:
-        toast('You do not have permisiion to view this page', color='warning')
+        toast('You do not have permission to view this page', color='warning')
         main()
         return
 
@@ -1444,7 +1463,7 @@ def view_crime(crime_id):
 
     clear()
 
-    current_crime_status = None  # to store the current status of the crime report
+    global current_response
 
     def change_crime_status():
         """
@@ -1499,11 +1518,21 @@ def view_crime(crime_id):
                 f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
                 col=2)])
 
-        if get_role_id() == 3:  # if the user is a police staff, show the change status button
+        if get_role_id() == 3:  # if the user is a police staff, show the following buttons
             put_buttons([
                 {'label': 'Change Status', 'value': 'edit', 'color': 'primary'},
+                {'label': 'Respond', 'value': 'edit', 'color': 'info'},
                 {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-            ], onclick=[change_crime_status, partial(delete_crime, crime.id)])
+            ], onclick=[change_crime_status, partial(respond_chat, crime.id), partial(delete_crime, crime.id)])
+
+        if get_role_id() == 2:  # if the user is a power user, the following statement will show
+            if current_response is False:
+                put_html('<p>The police hasn\'t responded yet.</p>')
+            elif current_response is True:
+                put_html('<p>The police has responded to your report.</p>')
+                put_button('Chat', onclick=lambda: respond_chat(crime_id), color='primary')
+            else:
+                put_html('<p>No response found for this crime report.</p>')
 
 
 @use_scope('ROOT', clear=True)
@@ -1531,6 +1560,77 @@ def delete_crime(crime_id):
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
     ], onclick=[confirm_delete, crime_report_feeds])
 
+
+
+# accessing messages from Response
+def get_messages(crime_id):
+    with Session() as sesh:
+        responses = sesh.query(Response).filter_by(crime_report_id=crime_id).order_by(Response.date_time.asc()).all()
+        for response in responses:
+            responseDateTime = response.date_time.strftime('%d %b, %Y')  # format the date
+            if get_user_id() == Response.user_id:
+                put_html(f'''
+                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
+                  <div class="card-body">
+                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
+                    <p class="card-text">{response.message}</p>
+                  </div>
+                </div>
+                ''')
+            else:
+                put_html(f'''
+                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
+                  <div class="card-body">
+                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
+                    <p class="card-text">{response.message}</p>
+                  </div>
+                </div>
+                ''')
+
+
+# the screen will appear when the Power user or the Police user click the button Respond
+def respond_chat(crime_id):
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_button('Back to Crime Report', onclick=lambda: view_crime(crime_id)).style('float:right; margin-top: 12px')
+    put_html('<h2>Send Message</h2>')
+    get_messages(crime_id)
+
+    createMessage = [
+        textarea('', name='message', required=True, wrap='hard', placeholder='Enter a message'),
+        actions('', [
+            {'label': 'Send', 'value': 'send', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='response_actions')
+    ]
+
+    response_message = input_group('Send Message', createMessage, cancelable=True)
+    try:
+        if response_message is None:
+            raise ValueError('Message cannot be send.')
+        if response_message['response_actions'] == 'send':
+            with Session() as sesh:
+                new_response = Response(crime_report_id=crime_id, user_id=get_user_id(), date_time=datetime.now(),
+                                        message=response_message['message'])
+                sesh.add(new_response)
+                sesh.commit()
+                global current_response
+
+                if get_role_id() == 2:
+                    current_response = False
+                elif get_role_id() == 3:
+                    current_response = True #set the current response True to allow the Power user respond
+
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Message sent', color='success')
+        view_crime(crime_id)
 
 @use_scope('ROOT', clear=True)
 def notifications_panel():
@@ -1651,7 +1751,6 @@ def bigger_font():
         smaller_font_clicks -= 1
     run_js(js_code)
     print(smaller_font_clicks, bigger_font_clicks)
-
 
 def generate_header():
     """
