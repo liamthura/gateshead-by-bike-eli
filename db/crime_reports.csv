@@ -1,0 +1,6 @@
+id,user_id,title,category,location,description,date_time,is_emergency,status
+1,1,Test report,Theft,"School, College & University",Don't know what's happening,2024-05-26 02:35:18.176583,1,Closed
+2,1,another one,Vandalism,"School, College & University",IDK!,2024-05-26 02:35:43.405862,0,Closed
+3,1,testing if the filters work for stats,Assault,Bus Station,ahhh,2024-05-26 02:36:01.113081,0,Pending
+4,1,Another one DO IT AGAIN,Other,Shopping Mall,Crime Nature: Robbery - Don't know what's happening,2024-05-26 02:40:26.714098,1,Pending
+5,1,Biker being abuse,Other,Bus Station,Crime Nature: Abuse - Suspected racism,2024-05-26 02:41:07.477827,0,Pending

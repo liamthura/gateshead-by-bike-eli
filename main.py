@@ -7,13 +7,21 @@ from pywebio.input import *
 from pywebio.output import *
 from pywebio.session import run_js
 from functools import partial
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
 
+#### DATABASE SETUP ####
+
 rolesImport = pd.read_csv('db/roles.csv')
 locationsImport = pd.read_csv('db/locations.csv')
+usersImport = pd.read_csv('db/users.csv')
+postsImport = pd.read_csv('db/posts.csv')
+threadsImport = pd.read_csv('db/threads.csv')
+flagsImport = pd.read_csv('db/content_reports.csv')
+crimeReportsImport = pd.read_csv('db/crime_reports.csv')
+notificationsImport = pd.read_csv('db/notifications.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -74,6 +82,7 @@ class Role(Base):
         return f"<Role(id={self.id}, name={self.name})>"
 
 
+# Defining the Location class with table name 'locations'
 class Location(Base):
     """
     Location class to define the structure of the 'locations' table -- for storing locations of parking spots
@@ -128,6 +137,7 @@ class ParkingPost(Base):
     pass
 
 
+# Defining the Rating class with table name 'ratings'
 class ParkingRating(Base):
     """
     ParkingRating class to define the structure of the 'ratings' table -- for ratings of parking spots
@@ -152,6 +162,7 @@ class ParkingRating(Base):
         return f"<ParkingRating(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, rating={self.rating})>"
 
 
+# Defining the Thread class with table name 'threads'
 class Thread(Base):
     """
     Thread class to define the structure of the 'threads' table -- for threads in the community forum
@@ -185,6 +196,7 @@ class Thread(Base):
         return f"<Thread(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
+# Defining the ContentReport class with table name 'content_reports'
 class ContentReport(Base):
     """
     ContentReport class to define the structure of the 'content_reports' table -- for reports on threads in the community forum
@@ -209,6 +221,7 @@ class ContentReport(Base):
         return f"<ContentReport(id={self.id}, user_id={self.user_id}, thread_id={self.thread_id})>"
 
 
+# Defining the CrimeReport class with table name 'crime_reports'
 class CrimeReport(Base):
     """
     CrimeReport class to define the structure of the 'crime_reports' table -- for Power User and Police, about reports on crimes in the community
@@ -240,6 +253,7 @@ class CrimeReport(Base):
         return f"<CrimeReport(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
+# Defining the Notification class with table name 'notifications'
 class Notification(Base):
     """
     Notification class to define the structure of the 'notifications' table --
@@ -271,6 +285,7 @@ class Notification(Base):
         return f"<SiteNotification(id={self.id}, user_id={self.user_id}, title={self.title})>"
 
 
+# Creating the tables in the database
 class Response(Base):
     """
         Response class to define the structure of the 'response' table --
@@ -295,20 +310,33 @@ class Response(Base):
 
 Base.metadata.create_all(db)
 
-# Inserting default user roles into the roles table if it is empty
+# Inserting default user roles and other dummy data into the respective tables if they are empty (for first run)
 with Session() as sesh:
     if sesh.query(Role).count() == 0:
         rolesImport.to_sql('roles', db, if_exists='append', index=False)
     if sesh.query(Location).count() == 0:
         locationsImport.to_sql('locations', db, if_exists='append', index=False)
+    if sesh.query(User).count() == 0:
+        usersImport.to_sql('users', db, if_exists='append', index=False)
+    if sesh.query(ParkingPost).count() == 0:
+        postsImport.to_sql('posts', db, if_exists='append', index=False)
+    if sesh.query(Thread).count() == 0:
+        threadsImport.to_sql('threads', db, if_exists='append', index=False)
+    if sesh.query(ContentReport).count() == 0:
+        flagsImport.to_sql('content_reports', db, if_exists='append', index=False)
+    if sesh.query(CrimeReport).count() == 0:
+        crimeReportsImport.to_sql('crime_reports', db, if_exists='append', index=False)
+    if sesh.query(Notification).count() == 0:
+        notificationsImport.to_sql('notifications', db, if_exists='append', index=False)
 
+#### GLOBAL VARIABLES ####
 
 # defining global variables to keep track of font size changes
 smaller_font_clicks = 0
 bigger_font_clicks = 0
 
-# define a global variable to store the dark mode status
-dark_mode = False
+# define a global variable to store the appearance status (counter)
+appearance = 0
 
 # define a global variable to store if the user has a valid login
 valid_user = None
@@ -316,6 +344,7 @@ valid_user = None
 # define a global variable to store the current response status of the crime report
 current_response = False
 
+# define a global variable to store the locations list so that session won't be necessary to query it again in form fields
 with Session() as sesh:
     locations_list = []
     locations = sesh.query(Location).all()
@@ -323,15 +352,32 @@ with Session() as sesh:
         locations_list.append(str(location.name))
 
 
+#### USER SYSTEM FUNCTIONS ####
+
 def user_login(username=None):
+    """
+    Function to handle user login and registration
+    :param username: Username of the user, default is None, Used to pre-fill the username field if the user has already entered it
+    :return:
+    """
     clear()  # to clear previous data if there is
 
     def validate_username(username):
+        """
+        Internal function to validate the username entered by the user
+        :param username: form field value of the username
+        :return:
+        """
         if re.match("^[a-zA-Z0-9_.-]+$",
                     username) is None:  # check if username contains only letters, numbers, ".", "_" and "-"
             return f'Username can only contain letters, numbers, ".", "_" and "-"'
 
     def validate_password(password):
+        """
+        Internal function to validate the password entered by the user
+        :param password: form field value of the password
+        :return:
+        """
         if re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)",
                     password) is None:  # check if password contains lowercase, uppercase and number
             toast(f'Password must contain a lowercase letter, an uppercase letter and a number', color='error',
@@ -341,8 +387,7 @@ def user_login(username=None):
             return True
 
     generate_header()
-    put_button('Back to Homepage', onclick=lambda: main(), color='secondary').style('float:right')
-    put_html("<h2>Login</h2>")
+    put_html("<h2>Login or Register</h2>")
 
     # Defining form fields
     loginFields = [
@@ -351,14 +396,16 @@ def user_login(username=None):
         actions("", [
             {'label': 'Login', 'value': 'login', 'type': 'submit'},
             {'label': 'Register', 'value': 'register', 'type': 'submit', 'color': 'secondary'},
+            {'label': 'Back to Homepage', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
         ], name="user_action"),
     ]
 
     data = input_group("User Log In", loginFields, cancelable=True)
 
-    if data is None:
+    if data is None or data['user_action'] == 'cancel':  # if user cancels the login with no data
         toast('Login not performed', color='warning')
-        user_login()
+        clear()
+        main()
     elif data['user_action'] == 'register':
         add_user(data) if validate_password(data['password']) is True else user_login(data['name'])
     elif data['user_action'] == 'login':
@@ -366,20 +413,30 @@ def user_login(username=None):
 
 
 def add_user(user_data):
+    """
+    Function to add a new user to the database
+    :param user_data: a dictionary containing the user data (username, display name, password, role)
+    :return:
+    """
     clear()
 
     def validate_passwords(password, confirm_password):
+        """
+        Internal function to validate the match of passwords entered by the user
+        :param password: form field value of the password
+        :param confirm_password: form field value of the confirm password
+        :return:
+        """
         if password != confirm_password:
             return 'Passwords do not match'
 
     generate_header()
-    put_button('Back to Homepage', onclick=lambda: main(), color='secondary').style('float:right')
     put_html("<h2>Register</h2>")
     try:
         with Session() as sesh:
             user_exists = sesh.query(User).filter_by(username=user_data['name']).first()
             if user_exists is not None:
-                raise ValueError('User already exists')
+                raise ValueError('User already exists')  # if user already exists shows a custom error message
 
             registration_fields = [
                 input('Username', name='name', required=True, readonly=True, value=user_data['name']),
@@ -397,7 +454,8 @@ def add_user(user_data):
             ]
 
             registration_data = input_group('Registration', registration_fields, cancelable=True)
-            if registration_data is None:
+            if registration_data is None:  # if user cancels the registration
+                clear()
                 raise ValueError('Registration cancelled')
             if registration_data['password'] != registration_data['confirm_password']:
                 toast(f'Passwords do not match', color='error')
@@ -409,35 +467,47 @@ def add_user(user_data):
                 sesh.commit()
                 print(sesh.query(User).all())
     except SQLAlchemyError:
-        toast(f'An error occurred', color='error')
+        toast(f'An error occurred', color='error')  # if there is an error in the database operation
     except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
+        toast(f'{str(ve)}', color='error')  # if there is a custom error message
     else:
         toast(f'User added, please login with new credentials', color='success')
     finally:
-        user_login(user_data['name'])
+        user_login(user_data['name'])  # redirect to login screen with the username pre-filled
 
 
 def verify_user(username, password):
+    """
+    Function to verify the user login credentials
+    :param username: username entered by the user
+    :param password: password entered by the user
+    :return:
+    """
     clear()
     global valid_user
     try:
         with Session() as sesh:
-            valid_user = sesh.query(User).filter_by(username=username).first()
+            valid_user = sesh.query(User).filter_by(username=username).first()  # check if the user exists
     except SQLAlchemyError:
         toast(f'An error occurred', color='error')
     else:
-        if valid_user is None:
+        if valid_user is None:  # if user does not exist
             toast(f'Invalid user', color='error')
             user_login()
-        elif valid_user.password != password:
+        elif valid_user.password != password:  # if password does not match with the correct one
             toast(f'Invalid login, please check your username and password', color='error')
             user_login()
         else:
             main()
+            scroll_to('ROOT', position='top')  # scroll to the top of the home page
 
 
 def get_user_id(username=None):
+    """
+    Function to get the user ID from the database
+    :param username: username of the user for role ID, default is None
+    :return: None if the user is not logged in, user ID if the user is logged in, or the user ID of the username provided
+    """
     global valid_user
     if valid_user is not None and username is None:
         return valid_user.id
@@ -450,10 +520,15 @@ def get_user_id(username=None):
 
 
 def get_username(user_id=None):
+    """
+    Function to get the username from the database
+    :param user_id: User ID of the user to get the name information for, default is None
+    :return: "Guest User" if the user is not logged in, a dictionary of username and display name if the user is logged in, or that of the user ID provided
+    """
     global valid_user
     if valid_user is not None and user_id is None:
         return valid_user.username
-    elif user_id is not None:
+    elif valid_user is not None and user_id is not None:
         with Session() as sesh:
             selected_user = sesh.query(User).filter_by(id=user_id).first()
             username = selected_user.username
@@ -464,6 +539,11 @@ def get_username(user_id=None):
 
 
 def get_role_name(user_id=None):
+    """
+    Function to get the role name from the database
+    :param user_id: User ID of the user to get the role name for, default is None
+    :return: None if the user is not logged in, the role name if the user is logged in, or that of the user ID provided
+    """
     global valid_user
     if valid_user is not None and user_id is None:
         with Session() as sesh:
@@ -480,6 +560,11 @@ def get_role_name(user_id=None):
 
 
 def get_role_id(user_id=None):
+    """
+    Function to get the role ID from the database
+    :param user_id: User ID of the user to get the role ID for, default is None
+    :return: None if the user is not logged in, the role ID if the user is logged in, or that of the user ID provided
+    """
     global valid_user
     if valid_user is not None and user_id is None:
         return valid_user.role_id
@@ -492,7 +577,24 @@ def get_role_id(user_id=None):
         return None
 
 
+def get_user_badge(user_id=None):
+    """
+    This function returns a badge of the use based on their role.
+    :param user_id: The ID of the user to get the badge of.
+    :return:
+    """
+    if user_id is not None:
+        return f'<span class="badge bg-{get_role_color(get_role_id(user_id))} text-light">{get_role_name(user_id)}</span>'
+    else:
+        return ''
+
+
 def get_role_color(role_id=None):
+    """
+    Function to get the role color from the database
+    :param role_id: Role ID of the role to get the color for, default is None
+    :return: None if the user is not logged in, the role color if the user is logged in, or that of the role ID provided
+    """
     global valid_user
     if valid_user is not None and role_id is None:
         with Session() as sesh:
@@ -509,6 +611,10 @@ def get_role_color(role_id=None):
 
 
 def user_logout():
+    """
+    Function to log out the user
+    :return:
+    """
     clear()
     global valid_user
     valid_user = None
@@ -516,32 +622,26 @@ def user_logout():
     main()
 
 
-@use_scope('ROOT')
-def main():
-    clear()
-    generate_header()
-    generate_nav()
-
-    put_html('<h2>Recent Posts</h2>')
-    post_feeds()
-
-    # put_buttons(['Login', 'Register'], onclick=[login, register])
-
+#### PARKING POST FUNCTIONS by KS and MTK####
 
 # all posts screen
 @use_scope('ROOT', clear=True)
 def post_feeds():
+    """
+    Function to display all the posts in the database
+    :return:
+    """
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
-    if valid_user is not None:
+    if valid_user is not None:  # if user is logged in
         put_buttons([
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'},
             {'label': 'My posts', 'value': 'view_own_post', 'color': 'info'}
         ], onclick=[create_post, own_post_feeds]).style('float:right; margin-top: 12px')
-    elif valid_user is None:
+    elif valid_user is None:  # if user is not logged in (Guest User)
         put_buttons([
             {'label': 'Create a new post', 'value': 'create_post', 'color': 'success'}
         ], onclick=[create_post]).style('float:right; margin-top: 12px')
@@ -554,6 +654,10 @@ def post_feeds():
 # own posts screen
 @use_scope('ROOT', clear=True)
 def own_post_feeds():
+    """
+    Function to display the posts created by the logged in user
+    :return:
+    """
     clear()
     global valid_user
 
@@ -571,11 +675,16 @@ def own_post_feeds():
 
 # accessing posts from ParkingPost
 def get_posts(user_id=None):
+    """
+    Function to get the posts from the database
+    :param user_id: User ID of the posts to be retrieved, default is None which retrieves all posts
+    :return:
+    """
     global valid_user
     postBtnGroup = None
 
     with Session() as sesh:
-        if user_id is not None:
+        if user_id is not None:  # if user is logged in and wants to see their own posts
             posts = sesh.query(ParkingPost).filter_by(user_id=user_id).order_by(ParkingPost.id.desc()).limit(10).all()
         else:
             posts = sesh.query(ParkingPost).order_by(ParkingPost.id.desc()).limit(10).all()
@@ -586,7 +695,7 @@ def get_posts(user_id=None):
             return
 
         for post in posts:
-            # we use the post.id as the scope to avoid conflicts with other posts
+            # we use the post.id as the scope to avoid conflicts with other posts when going back after editing
             with use_scope(f'post-{post.id}'):
                 if user_id is not None or (
                         user_id is None and valid_user is not None and post.user_id == valid_user.id):
@@ -607,7 +716,7 @@ def get_posts(user_id=None):
                     <p style="white-space: pre-wrap;">{post.content}</p>
                 </div>
                 <div class="card-footer text-muted">
-                    Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}
+                    <p class="mb-0">Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}</p>
                 </div>
             </div>
             ''').style('margin-bottom: 10px;')
@@ -615,7 +724,7 @@ def get_posts(user_id=None):
                 put_column([put_buttons([
                     {'label': 'Rate', 'value': 'add_rating', 'color': 'info'}
                 ], onclick=[partial(add_rating, post.id)], small=True)]),
-                put_column([postBtnGroup]).style('justify-content: end;')
+                put_column([postBtnGroup]).style('justify-content: end;')  # align the buttons to the right
             ])
             postBtnGroup = None
         if postCount > 10:
@@ -623,6 +732,11 @@ def get_posts(user_id=None):
 
 
 def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1 for testing)
+    """
+    Function to add a rating to a post
+    :param post_id: ID of the post to be rated
+    :return:
+    """
     popup('Rate this spot',
           [
               put_radio('rateLevels', [
@@ -667,16 +781,20 @@ def save_rate(post_id):  # saving the rating details to the database
 
     # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
+    scroll_to(f'post-{post_id}', position='middle')  # scroll to the post after rating
 
 
 # saving post to ParkingPost
 def create_post():
+    """
+    Function to create a new post for parking locations
+    :return:
+    """
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
-    put_buttons(['Back to Home'], onclick=[post_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Create a new post</h2>')
 
     createPostFields = [
@@ -699,8 +817,9 @@ def create_post():
 
     post_data = input_group('Create Post', createPostFields, cancelable=True)
     try:
-        if post_data is None:
-            raise ValueError('Post creation cancelled')
+        if post_data is None or post_data['post_actions'] == 'cancel':  # if user cancels the post creation
+            clear()
+            raise ValueError('Post creation cancelled')  # shows a custom error message
         if post_data['post_actions'] == 'create':
             with Session() as sesh:
                 new_post = ParkingPost(user_id=get_user_id(), location=post_data['location'], type=post_data['type'],
@@ -708,9 +827,9 @@ def create_post():
                 sesh.add(new_post)
                 sesh.commit()
     except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
+        toast(f'{str(ve)}', color='error')  # if there is a custom error message
     except SQLAlchemyError:
-        toast('An error occurred', color='error')
+        toast('An error occurred', color='error')  # if there is an error in the database operation
     else:
         toast('Post created successfully', color='success')
     finally:
@@ -719,13 +838,19 @@ def create_post():
 
 # editing post from ParkingPost
 def edit_post(post_id):
+    """
+    Function to edit a post in the ParkingPost table
+    :param post_id: ID of the post to be edited
+    :return:
+    """
     clear()
 
     generate_header()
     generate_nav()
 
     with Session() as sesh:
-        post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+        post = sesh.query(ParkingPost).filter_by(
+            id=post_id).first()  # get the details of post being edited from the database
         updatePostFields = [
             select('Location', options=locations_list, name='location', required=True, value=post.location),
             select('Type', options=[
@@ -747,6 +872,7 @@ def edit_post(post_id):
     post_data = input_group('Edit Post', updatePostFields, cancelable=True)
     try:
         if post_data is None:
+            clear()
             raise ValueError('Post not updated')
         if post_data['post_actions'] == 'update':
             with Session() as sesh:
@@ -771,13 +897,19 @@ def edit_post(post_id):
 # deleting post from ParkingPost
 
 def delete_post(post_id):
+    """
+    Function to delete a post from the ParkingPost table
+    :param post_id: ID of the post to be deleted
+    :return:
+    """
     clear()
 
     generate_header()
 
-    def confirm_delete():
+    def confirm_delete():  # function to confirm the deletion of the post
         with Session() as sesh:
-            post = sesh.query(ParkingPost).filter_by(id=post_id).first()
+            post = sesh.query(ParkingPost).filter_by(
+                id=post_id).first()  # get the details of post being deleted from the database
             sesh.delete(post)
             sesh.commit()
         toast(f'The post at {post.location} has been deleted', color='success')
@@ -795,6 +927,11 @@ def delete_post(post_id):
 
 
 def get_avg_rating(post_id):
+    """
+    Function to get the average rating of a post
+    :param post_id: ID of the post to get the average rating for
+    :return: None if no rating is detected, the average rating of the post if ratings are detected
+    """
     total_rating = 0
     with Session() as sesh:
         rating_post = sesh.query(ParkingRating).filter_by(post_id=post_id).all()
@@ -807,23 +944,28 @@ def get_avg_rating(post_id):
             for rating in rating_post:
                 total_rating += rating.rating
             avg_result = total_rating / post_count
-            return round(avg_result, 1)
+            return round(avg_result, 1)  # round the average rating to 1 decimal place
 
 
+#### FORUM FUNCTIONS by KT ####
 @use_scope('ROOT', clear=True)
 def forum_feeds():
+    """
+    Function to display all the threads in the database
+    :return:
+    """
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
-    if valid_user is not None and get_role_id(valid_user.id) == 4:
+    if valid_user is not None and get_role_id(valid_user.id) == 4:  # if user is a council staff
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'},
             {'label': 'Moderate threads', 'value': 'view_all_threads', 'color': 'warning'}
         ], onclick=[create_thread, own_forum_feeds, content_reports]).style('float:right; margin-top: 12px;')
-    elif valid_user is not None:
+    elif valid_user is not None:  # if user is not a council staff / all other logged-in users
         put_buttons([
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'My threads', 'value': 'view_own_threads', 'color': 'info'}
@@ -835,6 +977,10 @@ def forum_feeds():
 
 @use_scope('ROOT', clear=True)
 def own_forum_feeds():
+    """
+    Function to display the threads created by the logged-in user
+    :return:
+    """
     clear()
     global valid_user
 
@@ -857,14 +1003,19 @@ def own_forum_feeds():
 
 
 def get_threads(user_id=None):
+    """
+    Function to get the threads from the database
+    :param user_id: User ID of the threads to be retrieved, default is None which retrieves all threads
+    :return:
+    """
     global valid_user
     threadBtnGroup = None
 
     with Session() as sesh:
-        if user_id is not None:
+        if user_id is not None:  # if user is logged in and wants to see their own threads
             threads = sesh.query(Thread).filter_by(user_id=user_id, parent_id=None).order_by(Thread.id.desc()).limit(
                 10).all()
-        else:
+        else:  # if user is not logged in or wants to see all threads (Community Forum)
             threads = sesh.query(Thread).filter_by(parent_id=None).order_by(Thread.id.desc()).limit(10).all()
 
         threadCount = len(threads)
@@ -912,8 +1063,8 @@ def get_threads(user_id=None):
                 ])
 
                 comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
-                print(len(comments))
-                if len(comments) != 0:
+                # print(len(comments))
+                if len(comments) != 0:  # show if there are comments in the thread
                     put_html('<p class="h5 fw-bolder">Comments</p>')
                     for comment in comments:
                         commentDateTime = comment.date_time.strftime('%I:%M%p – %d %b, %Y')
@@ -936,9 +1087,14 @@ def get_threads(user_id=None):
 
 
 def add_comment(parent_thread_id):
+    """
+    Function to add a comment to a thread
+    :param parent_thread_id: ID of the thread to add a comment to
+    :return:
+    """
     global valid_user
 
-    def create_comment(comment_data):
+    def create_comment(comment_data):  # function to create a comment
         if comment_data == '':
             toast('Comment cannot be empty', color='warning')
             return
@@ -980,7 +1136,13 @@ def add_comment(parent_thread_id):
 
 
 def vote_thread(thread_id, vote_type):
-    if valid_user is None:
+    """
+    Function to vote on a thread
+    :param thread_id: ID of the thread to vote on
+    :param vote_type: Up or down vote
+    :return:
+    """
+    if valid_user is None:  # if user is not logged in
         toast(f'Login / register to vote', color='warning')
         user_login()
         return
@@ -1003,12 +1165,15 @@ def vote_thread(thread_id, vote_type):
 
 
 def create_thread():
+    """
+    Function to create a new thread
+    :return:
+    """
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
-    put_buttons(['Back to Forum'], onclick=[forum_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Create a new thread</h2>')
 
     createThreadFields = [
@@ -1022,7 +1187,8 @@ def create_thread():
 
     thread_data = input_group('Create Thread', createThreadFields, cancelable=True)
     try:
-        if thread_data is None:
+        if thread_data is None or thread_data['thread_actions'] == 'cancel':
+            clear()
             raise ValueError('Thread creation cancelled')
         if thread_data['thread_actions'] == 'create':
             with Session() as sesh:
@@ -1042,13 +1208,19 @@ def create_thread():
 
 
 def edit_thread(thread_id):
+    """
+    Function to edit a thread
+    :param thread_id: ID of the thread to be edited
+    :return:
+    """
     clear()
 
     generate_header()
     generate_nav()
 
     with Session() as sesh:
-        thread = sesh.query(Thread).filter_by(id=thread_id).first()
+        thread = sesh.query(Thread).filter_by(
+            id=thread_id).first()  # get the details of thread being edited from the database
         updateThreadFields = [
             input('Title', name='title', required=True, value=thread.title),
             textarea('Content', name='content', required=True, value=thread.content, wrap='hard'),
@@ -1076,25 +1248,28 @@ def edit_thread(thread_id):
         toast('Thread updated successfully', color='success')
     finally:
         forum_feeds()
-        scroll_to(f'thread-{thread_id}', position='middle')
+        scroll_to(f'thread-{thread_id}', position='middle')  # Scroll to the same thread after editing
         return
 
 
 def delete_thread(thread_id):
     """
-        When a forum thread is deleted, all threads with the same parent_id to the thread in deletion should be deleted as well
-        to avoid orphaned threads.
-        """
+    When a forum thread is deleted, all threads with the same parent_id to the thread in deletion should be deleted as well
+    to avoid orphaned threads.
+    :param thread_id: ID of the thread to be deleted
+    """
     clear()
 
     generate_header()
 
     def confirm_delete():
         with Session() as sesh:
-            thread = sesh.query(Thread).filter_by(id=thread_id).first()
+            thread = sesh.query(Thread).filter_by(
+                id=thread_id).first()  # get the details of thread being deleted from the database
             sesh.delete(thread)
             sesh.commit()
-            sesh.query(Thread).filter_by(parent_id=thread_id).delete()
+            sesh.query(Thread).filter_by(
+                parent_id=thread_id).delete()  # delete all comments with the same parent thread
             sesh.commit()
         toast(f'Thread "{thread.title}" and its comments have been deleted', color='success')
         # routing council staff to all forum feeds and all other users to their own forum feeds
@@ -1113,9 +1288,14 @@ def delete_thread(thread_id):
 
 @use_scope('ROOT', clear=True)
 def content_reports(thread_id=None):
+    """
+    Function to display all the content reports for threads in the database or for a specific thread (for council staff)
+    :param thread_id: ID of the thread to view reports for, default is None which retrieves all reports
+    :return:
+    """
     clear()
     global valid_user
-    if valid_user is None or get_role_id() != 4:
+    if valid_user is None or get_role_id() != 4:  # if user is not a council staff
         toast('You do not have permission to view this page', color='warning')
         main()
         return
@@ -1127,12 +1307,14 @@ def content_reports(thread_id=None):
     ], onclick=[content_reports_by_thread]).style('float:right; margin-top: 12px;')
     put_html('<h2>Individual Content Reports</h2>')
 
-    report_table_data = []
+    report_table_data = []  # table data to store columns for the reports
     with Session() as sesh:
-        if thread_id is not None:
-            reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == thread_id).all()
-        else:
-            reports = sesh.query(ContentReport).join(Thread).filter(ContentReport.thread_id == Thread.id).all()
+        if thread_id is not None:  # if a specific thread is selected
+            reports = sesh.query(ContentReport).join(Thread).filter(
+                ContentReport.thread_id == thread_id).all()  # get reports for the specific thread
+        else:  # if all reports are selected
+            reports = sesh.query(ContentReport).join(Thread).filter(
+                ContentReport.thread_id == Thread.id).all()  # get all reports
         reportCount = len(reports)
         if reportCount == 0:
             put_html('<p class="lead text-center">There is no reports</p>')
@@ -1147,11 +1329,11 @@ def content_reports(thread_id=None):
                 report.comment,
                 reportDateTime,
                 put_buttons([
-                    {'label': 'View Thread', 'value': 'view_thread', 'color': 'info'},
-                    {'label': 'Delete Thread', 'value': 'delete_thread', 'color': 'danger'},
+                    {'label': 'View', 'value': 'view_thread', 'color': 'info'},
+                    {'label': 'Delete', 'value': 'delete_thread', 'color': 'danger'},
                 ], onclick=[partial(view_thread, report.associated_thread.id),
-                            partial(delete_thread, report.associated_thread.id)], group=True
-                )])
+                            partial(delete_thread, report.associated_thread.id)]
+                ).style('display: flex; justify-content: start; flex-direction: column; gap: 5px;')])
         put_table(report_table_data, header=[
             'ID',
             'Made by',
@@ -1163,6 +1345,10 @@ def content_reports(thread_id=None):
 
 
 def content_reports_by_thread():
+    """
+    Function to display all the threads with that have been reported in the database
+    :return:
+    """
     clear()
     global valid_user
     if valid_user is None or get_role_id() != 4:
@@ -1179,7 +1365,8 @@ def content_reports_by_thread():
 
     report_table_data = []
     with Session() as sesh:
-        threads = sesh.query(Thread).filter(Thread.flags > 0).order_by(Thread.flags.desc()).all()
+        threads = sesh.query(Thread).filter(Thread.flags > 0).order_by(
+            Thread.flags.desc()).all()  # get threads with reports / flags
         threadCount = len(threads)
         if threadCount == 0:
             put_html('<p class="lead text-center">There is no threads with reports</p>')
@@ -1213,6 +1400,11 @@ def content_reports_by_thread():
 
 
 def view_thread(thread_id):
+    """
+    Function to view a thread that has been reported or an individual thread
+    :param thread_id: ID of the thread to view
+    :return:
+    """
     clear()
     global valid_user
 
@@ -1256,9 +1448,14 @@ def view_thread(thread_id):
 
 
 def report_thread(thread_id):
+    """
+    Function to report a thread
+    :param thread_id: ID of the thread to report
+    :return:
+    """
     global valid_user
 
-    def create_report(report_data):
+    def create_report(report_data):  # function to create a report and save it to the database
         if report_data == '':
             toast('Reason cannot be empty', color='warning')
             return
@@ -1267,7 +1464,7 @@ def report_thread(thread_id):
                 thread = sesh.query(Thread).filter_by(id=thread_id).first()
                 new_report = ContentReport(user_id=valid_user.id, thread_id=thread_id, comment=report_data,
                                            date_time=datetime.now())
-                thread.flags += 1
+                thread.flags += 1  # increment the flags of the thread
                 sesh.add(new_report)
                 sesh.commit()
         except SQLAlchemyError:
@@ -1286,28 +1483,30 @@ def report_thread(thread_id):
     elif valid_user.id is not None:
         with Session() as sesh:
             thread = sesh.query(Thread).filter_by(id=thread_id).first()
-            if thread.user_id == valid_user.id:
-                toast(f'Silly, let\'s not report your own thread :)', color='warning')
-                forum_feeds()
-            else:
-                popup(
-                    'Report a Thread',
-                    [
-                        put_textarea('reason', label='Reason of Report', rows=3),
-                        put_buttons([
-                            {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
-                            {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
-                        ], onclick=[lambda: create_report(pin.reason), close_popup])
-                    ],
-                    closable=True
-                )
+            # if thread.user_id == valid_user.id:
+            #     toast(f'Silly, let\'s not report your own thread :)', color='warning')
+            #     forum_feeds()
+            # else:
+            popup(
+                'Report a Thread',
+                [
+                    put_textarea('reason', label='Reason of Report', rows=3),
+                    put_buttons([
+                        {'label': 'Submit', 'value': 'submit', 'color': 'primary'},
+                        {'label': 'Cancel', 'value': 'cancel', 'color': 'danger'}
+                    ], onclick=[lambda: create_report(pin.reason), close_popup])
+                ],
+                closable=True
+            )
 
 
+#### CRIME REPORT FUNCTIONS by KT and IVY ####
 @use_scope('ROOT', clear=True)
-def crime_report_feeds():
+def crime_report_feeds(view='all'):
     """
     This function will display all the police reports made by the user.
     If the user is a police staff, it will display all the police reports made by all users.
+    :param view: The view of the police reports to be displayed, default is 'all' which displays all police reports
     """
     clear()
     global valid_user
@@ -1315,10 +1514,18 @@ def crime_report_feeds():
     generate_header()
     generate_nav()
     if valid_user is not None and valid_user.id == 3:  # police staff
-        put_buttons([
-            {'label': 'Emergency Crime Reports', 'value': 'crime_report_feeds_by_emergency', 'color': 'danger'}
-        ], onclick=[crime_report_feeds_by_emergency]).style('float:right; margin-top: 12px;')
-        put_html('<h2>All Crime Reports</h2>')
+        if view == 'all':
+            put_buttons([
+                {'label': 'Emergency Crime Reports', 'value': 'crime_report_feeds_by_emergency', 'color': 'danger'},
+                {'label': 'Crime Statistics', 'value': 'crime_stats', 'color': 'warning'}
+            ], onclick=[partial(crime_report_feeds, 'emergency'), crime_stats]).style('float:right; margin-top: 12px;')
+            put_html('<h2>All Crime Reports</h2>')
+        elif view == 'emergency':
+            put_buttons([
+                {'label': 'All Crime Reports', 'value': 'crime_report_feeds', 'color': 'secondary'},
+                {'label': 'Crime Statistics', 'value': 'crime_stats', 'color': 'warning'}
+            ], onclick=[partial(crime_report_feeds, 'all'), crime_stats]).style('float:right; margin-top: 12px;')
+            put_html('<h2>Emergency Crime Reports</h2>')
     else:  # power users
         put_buttons([
             {'label': 'Report a Crime', 'value': 'report_crime', 'color': 'success'}
@@ -1331,14 +1538,23 @@ def crime_report_feeds():
     try:
         if valid_user is None:
             raise ValueError('You need to login to view police reports')
+        elif valid_user is not None and valid_user.role_id not in [2, 3]:  # if not power user or police staff
+            raise ValueError('You do not have permission to view police reports')
         elif valid_user.id == 3:  # police staff
             with Session() as sesh:
-                crimes = sesh.query(CrimeReport).all()
-                crimeCount = len(crimes)
-                if crimeCount == 0:
-                    put_html('<p class="lead text-center">There is no police reports</p>')
-                    return
-        else:  # all other users
+                if view == 'all':
+                    crimes = sesh.query(CrimeReport).all()
+                    crimeCount = len(crimes)
+                    if crimeCount == 0:
+                        put_html('<p class="lead text-center">There is no police reports</p>')
+                        return
+                elif view == 'emergency':
+                    crimes = sesh.query(CrimeReport).filter(CrimeReport.is_emergency == True).all()
+                    crimeCount = len(crimes)
+                    if crimeCount == 0:
+                        put_html('<p class="lead text-center">There is no emergency police reports</p>')
+                        return
+        else:  # power user
             with Session() as sesh:
                 crimes = sesh.query(CrimeReport).filter_by(user_id=valid_user.id).all()
                 crimeCount = len(crimes)
@@ -1354,13 +1570,15 @@ def crime_report_feeds():
                 seriesNum,
                 crime.id,
                 crime.title,
+                crime.location,
                 crime.category,
                 crimeDateTime,
                 crime.status,
                 put_buttons([
                     {'label': 'View', 'value': 'view', 'color': 'primary'},
                     {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
+                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)]).style(
+                    'display: flex; justify-content: start; gap: 5px; flex-direction: column;')
             ]
 
             crime_table_data.append(row)
@@ -1370,6 +1588,7 @@ def crime_report_feeds():
             'No',
             'Ref ID',
             'Title',
+            'Location',
             'Nature',
             'Date',
             'Status',
@@ -1377,108 +1596,6 @@ def crime_report_feeds():
         ]
 
         put_table(crime_table_data, header=header)
-
-
-def crime_report_feeds_by_emergency():
-    clear()
-    global valid_user
-    if valid_user is None or get_role_id() != 3:
-        toast('You do not have permission to view this page', color='warning')
-        main()
-        return
-
-    generate_header()
-    generate_nav()
-    put_buttons([
-        {'label': 'All Crime Reports', 'value': 'crime_report_feeds', 'color': 'secondary'}
-    ], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Emergency Reports</h2>')
-
-    crime_table_data = []
-    with Session() as sesh:
-        crimes = sesh.query(CrimeReport).filter(CrimeReport.is_emergency == True).all()
-        crimeCount = len(crimes)
-        if crimeCount == 0:
-            put_html('<p class="lead text-center">There is no police reports</p>')
-            return
-
-        seriesNum = 1
-        for crime in crimes:
-            crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
-            crime_table_data.append([
-                seriesNum,
-                crime.id,
-                crime.title,
-                crime.category,
-                crimeDateTime,
-                crime.status,
-                put_buttons([
-                    {'label': 'View', 'value': 'view', 'color': 'primary'},
-                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
-            ])
-            seriesNum += 1
-
-        put_table(crime_table_data, header=[
-            'No',
-            'Ref ID',
-            'Title',
-            'Nature',
-            'Date',
-            'Status',
-            'Action'
-        ])
-
-
-def crime_report_feeds_by_emergency():
-    clear()
-    global valid_user
-    if valid_user is None or get_role_id() != 3:
-        toast('You do not have permission to view this page', color='warning')
-        main()
-        return
-
-    generate_header()
-    generate_nav()
-    put_buttons([
-        {'label': 'All Crime Reports', 'value': 'crime_report_feeds', 'color': 'secondary'}
-    ], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Emergency Reports</h2>')
-
-    crime_table_data = []
-    with Session() as sesh:
-        crimes = sesh.query(CrimeReport).filter(CrimeReport.is_emergency == True).all()
-        crimeCount = len(crimes)
-        if crimeCount == 0:
-            put_html('<p class="lead text-center">There is no police reports</p>')
-            return
-
-        seriesNum = 1  # for numbering the rows
-        for crime in crimes:
-            crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
-            crime_table_data.append([
-                seriesNum,
-                crime.id,
-                crime.title,
-                crime.category,
-                crimeDateTime,
-                crime.status,
-                put_buttons([
-                    {'label': 'View', 'value': 'view', 'color': 'primary'},
-                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
-            ])
-            seriesNum += 1
-
-        put_table(crime_table_data, header=[
-            'No',
-            'Ref ID',
-            'Title',
-            'Nature',
-            'Date',
-            'Status',
-            'Action'
-        ])
 
 
 def report_crime():
@@ -1495,7 +1612,6 @@ def report_crime():
 
     generate_header()
     generate_nav()
-    put_buttons(['Back to My Police Reports'], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>Report a Crime</h2>')
 
     reportCrimeFields = [
@@ -1506,10 +1622,11 @@ def report_crime():
                                    ], name='category', required=True, value='Theft',
                onchange=lambda c: input_update('other', placeholder='Please specify', hidden=False,
                                                required=False) if c == 'Other' else input_update('other', hidden=True)),
+        # if "Other" is selected, show an input field for specifying the nature of the crime
         input('', name='other', required=False, hidden=True, maxlength=20),
         select('Location', locations_list, name='location', required=True),
         textarea('Description', name='content', required=True, wrap='hard',
-                 help='Please provide as much detail as possible including the exact location'),
+                 help_text='Please provide as much detail as possible including the exact location'),
         checkbox('Is this an emergency?', name='emergency', options=[{'label': 'Yes - Notify Police', 'value': True}]),
         actions('', [
             {'label': 'Report', 'value': 'report', 'type': 'submit'},
@@ -1521,15 +1638,22 @@ def report_crime():
     crime_data = input_group('Report a Crime', reportCrimeFields, cancelable=True)
 
     try:
-        if crime_data is None:
+        if crime_data is None or crime_data['crime_actions'] == 'cancel':
+            clear()
+            crime_report_feeds()
             raise ValueError('Crime report cancelled')  # raise an error if the user cancels the report
         if crime_data['crime_actions'] == 'report':
             with Session() as sesh:
                 new_crime = CrimeReport(user_id=valid_user.id, title=crime_data['title'],
-                                        category=crime_data['category'] if crime_data[
-                                                                               'category'] != 'other' else  # if the category is 'other', use the other input field
-                                        crime_data['other'],
-                                        location=crime_data['location'], description=crime_data['content'],
+                                        category=crime_data['category'],
+                                        location=crime_data['location'],
+                                        description=crime_data['content'] if crime_data[
+                                                                                 'category'] != 'Other' else "Crime Nature: " +
+                                                                                                             crime_data[
+                                                                                                                 'other'] + " - " +
+                                                                                                             crime_data[
+                                                                                                                 'content'],
+                                        # to catch the "Other" category
                                         is_emergency=True if True in crime_data['emergency'] else False,
                                         date_time=datetime.now(), status='Pending')
                 sesh.add(new_crime)
@@ -1553,7 +1677,7 @@ def view_crime(crime_id):
 
     clear()
 
-    global current_response
+    current_crime_status = None  # to store the current status of the crime report
 
     def change_crime_status():
         """
@@ -1608,7 +1732,7 @@ def view_crime(crime_id):
                 f'''<p class="h3">{crime.title} {f'<span class="fw-bolder badge bg-danger text-light"> EMERGENCY </span>' if crime.is_emergency else ''}</p>'''),
                 col=2)])
 
-        if get_role_id() == 3:  # if the user is a police staff, show the following buttons
+        if get_role_id() == 3:  # if the user is a police staff, show the change status button
             put_buttons([
                 {'label': 'Change Status', 'value': 'edit', 'color': 'primary'},
                 {'label': 'Respond', 'value': 'edit', 'color': 'info'},
@@ -1723,70 +1847,185 @@ def respond_chat(crime_id):
         view_crime(crime_id)
 
 @use_scope('ROOT', clear=True)
-def notification_feeds():
+def crime_stats(view='location'):
     """
-    This function will display the notifications panel for the user.
+    This function will display the statistics of the crime reports.
     """
     clear()
     global valid_user
 
     generate_header()
     generate_nav()
-    put_buttons(['Back to Home'], onclick=[main]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Notifications</h2>')
-
-    if valid_user is None:
-        put_html('<p class="lead text-center">You need to login to view notifications</p>')
+    if valid_user is None and valid_user.id not in [3, 4]:  # police and council staff
+        toast('You do not have permission to view this page', color='warning')
         return
+    if view == 'category':
+        put_buttons([
+            {'label': 'Reports by Crime Location', 'value': 'home', 'color': 'secondary'},
+        ], onclick=[partial(crime_stats, 'location')]).style('float:right; margin-top: 12px;')
+        put_html('<h2>Crime Statistics by Category</h2>')
+    elif view == 'location':
+        put_buttons([
+            {'label': 'Reports by Crime Category', 'value': 'home', 'color': 'secondary'},
+        ], onclick=[partial(crime_stats, 'category')]).style('float:right; margin-top: 12px;')
+        put_html('<h2>Crime Statistics by Location</h2>')
 
     with Session() as sesh:
-        notifications = sesh.query(Notification).filter_by(user_id=valid_user.id).order_by(
-            Notification.date_time.desc()).all()
+        crime_reports = sesh.query(CrimeReport).all()
+        crimeCount = len(crime_reports)
+        if crimeCount == 0:
+            put_html('<p class="lead text-center">There is no crime reports</p>')
+            return
+
+        data_table = []
+
+        if view == 'location':
+            result = sesh.query(
+                CrimeReport.location,
+                func.count(CrimeReport.id),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Pending"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Under Investigation"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Action Taken"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Closed")).group_by(
+                CrimeReport.location).order_by((func.count(CrimeReport.id) - func.count(CrimeReport.id).filter(
+                CrimeReport.status == "Closed")).desc()).all()
+            for location, count, new_cases, investigation_cases, resolved_cases, closed_cases in result:
+                data_table.append(
+                    [location, count - closed_cases, new_cases, investigation_cases, resolved_cases,
+                     closed_cases])
+
+            put_table(data_table,
+                      header=['Crime Location', 'Open Cases', 'New Cases', 'Under Investigation',
+                              'Resolved Cases',
+                              'Closed Cases'])
+
+        elif view == 'category':
+            result = sesh.query(
+                CrimeReport.category, func.count(CrimeReport.id),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Pending"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Under Investigation"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Action Taken"),
+                func.count(CrimeReport.id).filter(CrimeReport.status == "Closed")).group_by(
+                CrimeReport.category).order_by((func.count(CrimeReport.id) - func.count(CrimeReport.id).filter(
+                CrimeReport.status == "Closed")).desc()).all()
+            for category, count, new_cases, investigation_cases, resolved_cases, closed_cases in result:
+                data_table.append(
+                    [category, count - closed_cases, new_cases, investigation_cases, resolved_cases,
+                     closed_cases])
+
+            put_table(data_table,
+                      header=['Crime Category', 'Open Cases', 'New Cases', 'Under Investigation',
+                              'Resolved Cases',
+                              'Closed Cases'])
+
+
+#### NOTIFICATION FUNCTIONS by KT and MTK ####
+@use_scope('ROOT', clear=True)
+def notification_feeds():
+    """
+    This function will display the notifications feeds for the user.
+    Only council member and police users will be able to create and manage their notifications.
+    Council members will be able to see the name of council members who created council notifications / updates.
+    Police users will be able to see the name of police members who created police notifications.
+    """
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    if valid_user is not None and valid_user.role_id == 4:  # if the user is valid and is a council staff
+        put_buttons([
+            {'label': 'Announce an Update', 'value': 'create', 'color': 'primary'},
+            {'label': 'My Announcements', 'value': 'manage', 'color': 'secondary'}
+        ], onclick=[council_create_update, council_manage_updates]).style('float:right; margin-top: 12px;')
+    elif valid_user is not None and valid_user.role_id == 3:  # if the user is valid and is a police staff
+        put_buttons([
+            {'label': 'Post a Notification', 'value': 'create', 'color': 'primary'},
+            {'label': 'My Notifications', 'value': 'manage', 'color': 'secondary'}
+        ], onclick=[police_create_notification, police_manage_notifications]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Notifications</h2>')
+
+    with Session() as sesh:
+        notifications = sesh.query(Notification).order_by(Notification.id.desc()).all()
         notificationCount = len(notifications)
         if notificationCount == 0:
             put_html('<p class="lead text-center">There is no notifications</p>')
             return
-
-        notification_table_data = []
-        serialNum = 1
         for notification in notifications:
-            notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')
-            notification_table_data.append([
-                serialNum,
-                notification.title,
-                notification.content,
-                notificationDateTime
-            ])
-            serialNum += 1
-        put_table(notification_table_data, header=[
-            'No',
-            'Title',
-            'Content',
-            'Date'
-        ])
+            notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')  # format the date
+            if valid_user is not None and valid_user.role_id == 3:  # police staff
+                # use put_info to display the notification with a close button
+                put_info(
+                    put_html(f'''
+                    <div class="card p-2">
+                        <div class="card-body p-2">
+                        <h4 class="card-title m-0">
+                        {notification.category}: {notification.title} 
+                        {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
+                        </h4>
+                        {f'<p>By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
+                        
+                        <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
+                        <p class="card-text">{notification.content}</p>
+                        </div>
+                    </div>
+                    '''), closable=True
+                ).style('margin-bottom: 10px;')
+            elif valid_user is not None and valid_user.role_id == 4:  # council staff
+                # use put_info to display the notification with a close button
+                put_info(
+                    put_html(f'''
+                    <div class="card p-2">
+                        <div class="card-body p-2">
+                        <h4 class="card-title m-0">
+                        {notification.category}: {notification.title} 
+                        {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
+                        </h4>
+                        {f'<p>By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
+                        <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
+                        <p class="card-text">{notification.content}</p>
+                        </div>
+                    </div>
+                    '''), closable=True
+                ).style('margin-bottom: 10px;')
+            else:  # all other users
+                put_info(
+                    put_html(f'''
+                                <div class="card p-2">
+                                    <div class="card-body p-2">
+                                    <h4 class="card-title m-0">
+                                    {notification.category}: {notification.title} 
+                                    {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
+                                    </h4>
+
+                                    <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
+                                    <p class="card-text">{notification.content}</p>
+                                    </div>
+                                </div>
+                                '''), closable=True
+                ).style('margin-bottom: 10px;')
 
 
-@use_scope('ROOT')
-def edit_content():
-    popup('Edit Content', [
-        put_input('pin_name', label='Say Something'),
-        put_button('Submit', onclick=lambda: print(pin.pin_name))
-    ], closable=True)
-
-
-def toggle_dark_mode():
+#### ACCESSIBILITY GUI FUNCTIONS by KT ####
+def change_appearance():
     """
     This function toggles between dark and light mode
     by using the pywebio config function to change the theme.
     :return:
     """
-    global dark_mode
-    dark_mode = not dark_mode
-    if dark_mode:
-        config(theme='dark')
-    else:
+    global appearance
+    appearance += 1
+    if appearance == 0:
         config(theme='default')
-    print(dark_mode)
+    elif appearance == 1:
+        config(theme='dark')
+    elif appearance == 2:
+        config(theme='sketchy')
+    elif appearance == 3:
+        config(theme='yeti')
+    else:
+        appearance = 0
+        config(theme='default')
     run_js('window.location.reload()')
 
 
@@ -1798,7 +2037,7 @@ def smaller_font():
     """
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
-        let allElements = document.querySelectorAll('p,h2,h3,h4,h5,h6,label,input');
+        let allElements = document.querySelectorAll('p,h2,h3,h4,h5,h6,label,input,table');
         allElements.forEach(function(element) {{
             var style = window.getComputedStyle(element, null).getPropertyValue('font-size');
             var currentSize = parseFloat(style);
@@ -1824,7 +2063,7 @@ def bigger_font():
     """
     global smaller_font_clicks, bigger_font_clicks
     js_code = f'''
-            let allElements = document.querySelectorAll('p, h2, h3, h4, h5, h6,label,input');
+            let allElements = document.querySelectorAll('p, h2, h3, h4, h5, h6,label,input,table');
             allElements.forEach(function(element) {{
                 var style = window.getComputedStyle(element, null).getPropertyValue('font-size');
                 var currentSize = parseFloat(style);
@@ -1843,6 +2082,7 @@ def bigger_font():
     print(smaller_font_clicks, bigger_font_clicks)
 
 
+#### GENERATIVE HEADERS AND NAVIGATIONS FUNCTIONS by KT ####
 def generate_header():
     """
     This function generates the header of the page.
@@ -1853,8 +2093,8 @@ def generate_header():
     put_buttons([
         {'label': 'Aa+', 'value': 'bigger', 'color': 'primary'},
         {'label': 'Aa-', 'value': 'smaller', 'color': 'info'},
-        {'label': 'Dark Mode', 'value': 'dark_mode', 'color': 'dark'}
-    ], onclick=[bigger_font, smaller_font, toggle_dark_mode], group=True).style(
+        {'label': 'Switch Theme', 'value': 'switch_theme', 'color': 'dark'}
+    ], onclick=[bigger_font, smaller_font, change_appearance], group=True).style(
         'float:right')
     put_html(f'''
         <h1>
@@ -1905,60 +2145,96 @@ def generate_nav():
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            globalNavBtns[2],
-            {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
-        ], onclick=[main, forum_feeds, notification_feeds, crime_report_feeds])
+            {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'},
+            globalNavBtns[2]
+        ], onclick=[main, forum_feeds, crime_report_feeds, notification_feeds])
     elif valid_user.role_id == 3:  # if the user is a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            globalNavBtns[2],
-            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
-        ], onclick=[main, forum_feeds, notification_feeds, crime_report_feeds])
+            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'},
+            globalNavBtns[2]
+        ], onclick=[main, forum_feeds, crime_report_feeds, notification_feeds])
     elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
+            {'label': 'Crime Statistics', 'value': 'content_reports', 'color': 'warning'},
             globalNavBtns[2]
-        ], onclick=[main, forum_feeds, notification_feeds])
+        ], onclick=[main, forum_feeds, crime_stats, notification_feeds])
 
 
-# function to generate a card from post data (dummy data for placeholder purpose)
-def generate_card(post):
-    put_html(f'''
-        <div class="card">
-            <div class="card-header">
-            <h3 class="card-title" style="margin: 8px 0;">
-                {post['display_name']}
-                <small class="text-body-secondary">{post['date']}</small>
-            </h3>
-            </div>
-            <div class="card-body">
-                <p>{post['content']}.</p>
-            </div>
-            <div class="card-footer">
-                <p>By: {post['username']}</p>
-            </div>
-        </div>
-        ''').style('margin-bottom: 10px;')
+##############################################################################################################
+"""
+Below this line is for individual use-case parts implementations, create or move your functions down here.
+Edit the functions as needed, but do not change the function names unless necessary.
+"""
 
 
-def get_user_badge(user_id=None):
-    """
-    This function returns a badge of the use based on their role.
-    :param user_id: The ID of the user to get the badge of.
-    :return:
-    """
-    if user_id is not None:
-        return f'<span class="badge bg-{get_role_color(get_role_id(user_id))} text-light">{get_role_name(user_id)}</span>'
-    else:
-        return ''
+# KYI SIN LIN LATT'S IMPLEMENTATION STARTS HERE
+def respond_chat(crime_id):
+    clear()
+    scroll_to('ROOT', position='top')
+    put_html('<p class="lead center">This part can be found in Kyi Sin Lin Latt\'s Individual Implementation Code.</p>')
+
+
+# all other code of KS should be placed here
+
+# KYI SIN LIN LATT'S IMPLEMENTATION ENDS HERE
+
+##############
+
+# KHANT THURA'S IMPLEMENTATION STARTS HERE
+
+def police_create_notification():
+    clear()
+    scroll_to('ROOT', position='top')
+    put_html('<p class="lead center">This part can be found in Khant Thura\'s Individual Implementation Code.</p>')
+
+
+def police_manage_notifications():
+    clear()
+    scroll_to('ROOT', position='top')
+    put_html('<p class="lead center">This part can be found in Khant Thura\'s Individual Implementation Code.</p>')
+
+
+# all other code of KT code should be placed here
+
+# KHANT THURA'S IMPLEMENTATION ENDS HERE
+
+##############
+
+# MYAT THIRI KHANT'S IMPLEMENTATION STARTS HERE
+
+def council_create_update():
+    clear()
+    scroll_to('ROOT', position='top')
+    put_html('<p class="lead center">This part can be found in Myat Thiri Khant\'s Individual Implementation Code.</p>')
+
+
+def council_manage_updates():
+    clear()
+    scroll_to('ROOT', position='top')
+    put_html('<p class="lead center">This part can be found in Myat Thiri Khant\'s Individual Implementation Code.</p>')
+
+
+# all other code of MTK code should be placed here
+
+# MYAT THIRI KHANT'S IMPLEMENTATION ENDS HERE
+
+
+##############################################################################################################
+
+
+@use_scope('ROOT', clear=True)
+def main():
+    clear()
+    generate_header()
+    generate_nav()
+
+    put_html('<h2>Recent Parking Posts</h2>')
+    post_feeds()
 
 
 if __name__ == '__main__':
-    # Defining routes for the server so that it is navigable through html buttons and links
-    routes = {
-        'index': main,
-        'edit': edit_content
-    }
-    start_server(routes, port=8080, host='localhost', debug=True)
+    start_server(main, port=8080, host='localhost', debug=True)
