@@ -1678,6 +1678,7 @@ def view_crime(crime_id):
     clear()
 
     current_crime_status = None  # to store the current status of the crime report
+    global current_response # to store the current status of the crime report response
 
     def change_crime_status():
         """
@@ -1739,6 +1740,7 @@ def view_crime(crime_id):
                 {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
             ], onclick=[change_crime_status, partial(respond_chat, crime.id), partial(delete_crime, crime.id)])
 
+        # the response button will allow only when the police user has responded to the Power user
         if get_role_id() == 2:  # if the user is a power user, the following statement will show
             if current_response is False:
                 put_html('<p>The police hasn\'t responded yet.</p>')
@@ -1774,77 +1776,6 @@ def delete_crime(crime_id):
         {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
     ], onclick=[confirm_delete, crime_report_feeds])
 
-
-
-# accessing messages from Response
-def get_messages(crime_id):
-    with Session() as sesh:
-        responses = sesh.query(Response).filter_by(crime_report_id=crime_id).order_by(Response.date_time.asc()).all()
-        for response in responses:
-            responseDateTime = response.date_time.strftime('%d %b, %Y')  # format the date
-            if get_user_id() == Response.user_id:
-                put_html(f'''
-                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
-                  <div class="card-body">
-                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
-                    <p class="card-text">{response.message}</p>
-                  </div>
-                </div>
-                ''')
-            else:
-                put_html(f'''
-                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
-                  <div class="card-body">
-                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
-                    <p class="card-text">{response.message}</p>
-                  </div>
-                </div>
-                ''')
-
-
-# the screen will appear when the Power user or the Police user click the button Respond
-def respond_chat(crime_id):
-    clear()
-    global valid_user
-
-    generate_header()
-    generate_nav()
-    put_button('Back to Crime Report', onclick=lambda: view_crime(crime_id)).style('float:right; margin-top: 12px')
-    put_html('<h2>Send Message</h2>')
-    get_messages(crime_id)
-
-    createMessage = [
-        textarea('', name='message', required=True, wrap='hard', placeholder='Enter a message'),
-        actions('', [
-            {'label': 'Send', 'value': 'send', 'type': 'submit'},
-            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-        ], name='response_actions')
-    ]
-
-    response_message = input_group('Send Message', createMessage, cancelable=True)
-    try:
-        if response_message is None:
-            raise ValueError('Message cannot be send.')
-        if response_message['response_actions'] == 'send':
-            with Session() as sesh:
-                new_response = Response(crime_report_id=crime_id, user_id=get_user_id(), date_time=datetime.now(),
-                                        message=response_message['message'])
-                sesh.add(new_response)
-                sesh.commit()
-                global current_response
-
-                if get_role_id() == 2:
-                    current_response = False
-                elif get_role_id() == 3:
-                    current_response = True #set the current response True to allow the Power user respond
-
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Message sent', color='success')
-        view_crime(crime_id)
 
 @use_scope('ROOT', clear=True)
 def crime_stats(view='location'):
@@ -2172,13 +2103,75 @@ Edit the functions as needed, but do not change the function names unless necess
 
 
 # KYI SIN LIN LATT'S IMPLEMENTATION STARTS HERE
+# accessing messages from Response
+def get_messages(crime_id):
+    with Session() as sesh:
+        responses = sesh.query(Response).filter_by(crime_report_id=crime_id).order_by(Response.date_time.asc()).all()
+        for response in responses:
+            responseDateTime = response.date_time.strftime('%d %b, %Y')  # format the date
+            if get_user_id() == Response.user_id:
+                put_html(f'''
+                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
+                  <div class="card-body">
+                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
+                    <p class="card-text">{response.message}</p>
+                  </div>
+                </div>
+                ''')
+            else:
+                put_html(f'''
+                <div class="card w-75" style="width: 18rem; margin-bottom: 10px;">
+                  <div class="card-body">
+                    <h5 class="card-title">{get_username(response.user_id)["display_name"]}</h5>
+                    <p class="card-text">{response.message}</p>
+                  </div>
+                </div>
+                ''')
+
+
+# the screen will appear when the Power user or the Police user click the button Respond
 def respond_chat(crime_id):
     clear()
-    scroll_to('ROOT', position='top')
-    put_html('<p class="lead center">This part can be found in Kyi Sin Lin Latt\'s Individual Implementation Code.</p>')
+    global valid_user
 
+    generate_header()
+    generate_nav()
+    put_button('Back to Crime Report', onclick=lambda: view_crime(crime_id)).style('float:right; margin-top: 12px')
+    put_html('<h2>Send Message</h2>')
+    get_messages(crime_id)
 
-# all other code of KS should be placed here
+    createMessage = [
+        textarea('', name='message', required=True, wrap='hard', placeholder='Enter a message'),
+        actions('', [
+            {'label': 'Send', 'value': 'send', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='response_actions')
+    ]
+
+    response_message = input_group('Send Message', createMessage, cancelable=True)
+    try:
+        if response_message is None:
+            raise ValueError('Message cannot be send.')
+        if response_message['response_actions'] == 'send':
+            with Session() as sesh:
+                new_response = Response(crime_report_id=crime_id, user_id=get_user_id(), date_time=datetime.now(),
+                                        message=response_message['message'])
+                sesh.add(new_response)
+                sesh.commit()
+                global current_response
+
+                if get_role_id() == 2:
+                    current_response = False
+                elif get_role_id() == 3:
+                    current_response = True #set the current response True to allow the Power user respond
+
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Message sent', color='success')
+        view_crime(crime_id)
 
 # KYI SIN LIN LATT'S IMPLEMENTATION ENDS HERE
 
