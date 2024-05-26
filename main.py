@@ -503,7 +503,7 @@ def get_username(user_id=None):
     global valid_user
     if valid_user is not None and user_id is None:
         return valid_user.username
-    elif user_id is not None:
+    elif valid_user is not None and user_id is not None:
         with Session() as sesh:
             selected_user = sesh.query(User).filter_by(id=user_id).first()
             username = selected_user.username
@@ -692,7 +692,6 @@ def get_posts(user_id=None):
                 </div>
                 <div class="card-footer text-muted">
                     <p class="mb-0">Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}</p>
-                    <small>Posted by: {get_username(post.user_id)['display_name']}</small>
                 </div>
             </div>
             ''').style('margin-bottom: 10px;')
