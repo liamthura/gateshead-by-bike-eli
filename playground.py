@@ -141,3 +141,21 @@ if __name__ == '__main__':
         'bigger': bigger_font
     }
     start_server(routes, port=8080, host='localhost', debug=True)
+
+    # notification_table_data = []
+    # serialNum = 1
+    # for notification in notifications:
+    #     notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')
+    #     notification_table_data.append([
+    #         serialNum,
+    #         notification.title,
+    #         notification.content,
+    #         notificationDateTime
+    #     ])
+    #     serialNum += 1
+    # put_table(notification_table_data, header=[
+    #     'No',
+    #     'Title',
+    #     'Content',
+    #     'Date'
+    # ])
