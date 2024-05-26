@@ -1858,7 +1858,7 @@ def notification_feeds():
                         {notification.category}: {notification.title} 
                         {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
                         </h4>
-                        {f'<p>By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
+                        {f'<p class="mb-0">By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
                         
                         <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
                         <p class="card-text">{notification.content}</p>
@@ -1876,7 +1876,7 @@ def notification_feeds():
                         {notification.category}: {notification.title} 
                         {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
                         </h4>
-                        {f'<p>By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
+                        {f'<p class="mb-0">By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
                         <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
                         <p class="card-text">{notification.content}</p>
                         </div>
