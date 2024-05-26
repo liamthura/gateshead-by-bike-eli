@@ -691,7 +691,8 @@ def get_posts(user_id=None):
                     <p style="white-space: pre-wrap;">{post.content}</p>
                 </div>
                 <div class="card-footer text-muted">
-                    Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}
+                    <p class="mb-0">Average Rating: {get_avg_rating(post.id) if get_avg_rating(post.id) is not None else 'No ratings yet'}</p>
+                    <small>Posted by: {get_username(post.user_id)['display_name']}</small>
                 </div>
             </div>
             ''').style('margin-bottom: 10px;')
@@ -1855,7 +1856,7 @@ def notification_feeds():
                     <div class="card p-2">
                         <div class="card-body p-2">
                         <h4 class="card-title m-0">
-                        {notification.title} 
+                        {notification.category}: {notification.title} 
                         {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
                         </h4>
                         {f'<p>By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
@@ -1873,7 +1874,7 @@ def notification_feeds():
                     <div class="card p-2">
                         <div class="card-body p-2">
                         <h4 class="card-title m-0">
-                        {notification.title} 
+                        {notification.category}: {notification.title} 
                         {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
                         </h4>
                         {f'<p>By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
@@ -1889,7 +1890,7 @@ def notification_feeds():
                                 <div class="card p-2">
                                     <div class="card-body p-2">
                                     <h4 class="card-title m-0">
-                                    {notification.title} 
+                                    {notification.category}: {notification.title} 
                                     {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
                                     </h4>
 
