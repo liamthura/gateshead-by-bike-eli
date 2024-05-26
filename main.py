@@ -12,7 +12,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker, declarative_base, relationship
 from datetime import datetime
 
-dataFile = pd.read_csv('db/roles.csv')
+rolesImport = pd.read_csv('db/roles.csv')
+locationsImport = pd.read_csv('db/locations.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -41,7 +42,8 @@ class User(Base):
     display_name: Mapped[str]
     password: Mapped[str]
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
-    subscription_status: Mapped[bool] = mapped_column(default=False)
+    # subscription_status: Mapped[bool] = mapped_column(default=False)
+    associated_role: Mapped[list["Role"]] = relationship("Role", back_populates="users")
     notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="creator")
 
     # posts: Mapped[list["ParkingPost"]] = relationship("Post", back_populates="user_id")
@@ -63,12 +65,32 @@ class Role(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(unique=True)
-    # users: Mapped[list["User"]] = relationship("User", back_populates="role_id")
+    users: Mapped[list["User"]] = relationship("User", back_populates="associated_role",
+                                               cascade='all, delete')  # deleting a role will delete all users with that role
     color: Mapped[str] = mapped_column(nullable=True)
 
     # Structuring output of Role object for better readability
     def __repr__(self):
         return f"<Role(id={self.id}, name={self.name})>"
+
+
+class Location(Base):
+    """
+    Location class to define the structure of the 'locations' table -- for storing locations of parking spots
+    :param Base: Base class from SQLAlchemy to inherit from
+    :var id: Location ID, the primary key of the table
+    :var name: Name of the location
+    """
+    __tablename__ = 'locations'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str]
+    posts: Mapped[list["ParkingPost"]] = relationship("ParkingPost", back_populates="associated_location")
+    reports: Mapped[list["CrimeReport"]] = relationship("CrimeReport", back_populates="associated_location")
+
+    # Structuring output of Location object for better readability
+    def __repr__(self):
+        return f"<Location(id={self.id}, name={self.name})>"
 
 
 # Defining the Post class with table name 'posts'
@@ -90,12 +112,13 @@ class ParkingPost(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
-    location: Mapped[str]
+    location: Mapped[str] = mapped_column(ForeignKey("locations.name"))
     type: Mapped[str]
     content: Mapped[str]
     amt_slots: Mapped[int]
     ratings: Mapped[list["ParkingRating"]] = relationship("ParkingRating", back_populates="associated_post",
                                                           cascade='all, delete')
+    associated_location: Mapped[list["Location"]] = relationship("Location", back_populates="posts")
 
     # ratings: Mapped[list["ParkingRating"]] = relationship("Rating", back_populates="post_id")
 
@@ -206,11 +229,12 @@ class CrimeReport(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str]
     category: Mapped[str]
-    location: Mapped[str]
+    location: Mapped[str] = mapped_column(ForeignKey("locations.name"))
     description: Mapped[str]
     date_time: Mapped[datetime] = mapped_column(default=datetime.now())
     is_emergency: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(default='Pending')
+    associated_location: Mapped[list["Location"]] = relationship("Location", back_populates="reports")
 
     def __repr__(self):
         return f"<CrimeReport(id={self.id}, user_id={self.user_id}, title={self.title})>"
@@ -274,7 +298,10 @@ Base.metadata.create_all(db)
 # Inserting default user roles into the roles table if it is empty
 with Session() as sesh:
     if sesh.query(Role).count() == 0:
-        dataFile.to_sql('roles', db, if_exists='append', index=False)
+        rolesImport.to_sql('roles', db, if_exists='append', index=False)
+    if sesh.query(Location).count() == 0:
+        locationsImport.to_sql('locations', db, if_exists='append', index=False)
+
 
 # defining global variables to keep track of font size changes
 smaller_font_clicks = 0
@@ -288,6 +315,12 @@ valid_user = None
 
 # define a global variable to store the current response status of the crime report
 current_response = False
+
+with Session() as sesh:
+    locations_list = []
+    locations = sesh.query(Location).all()
+    for location in locations:
+        locations_list.append(str(location.name))
 
 
 def user_login(username=None):
@@ -647,7 +680,7 @@ def create_post():
     put_html('<h2>Create a new post</h2>')
 
     createPostFields = [
-        input('Location', name='location', required=True),
+        select('Location', options=locations_list, name='location', required=True),
         select('Type', options=[
             {'label': 'Rack', 'value': 'Rack', 'selected': True},
             {'label': 'Locker', 'value': 'Locker'},
@@ -656,7 +689,8 @@ def create_post():
             {'label': 'Indoor', 'value': 'Indoor'}
         ], name='type', required=True),
         input('Amount of Available Space', type=NUMBER, name='amount', min='0', required=True),
-        textarea('Content', name='content', required=True, wrap='hard'),
+        textarea('Description', name='content', required=True, wrap='hard',
+                 help_text='Describe the parking spot in detail including exact location'),
         actions('', [
             {'label': 'Create', 'value': 'create', 'type': 'submit'},
             {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
@@ -693,7 +727,7 @@ def edit_post(post_id):
     with Session() as sesh:
         post = sesh.query(ParkingPost).filter_by(id=post_id).first()
         updatePostFields = [
-            input('Location', name='location', required=True, value=post.location),
+            select('Location', options=locations_list, name='location', required=True, value=post.location),
             select('Type', options=[
                 {'label': 'Rack', 'value': 'Rack'},
                 {'label': 'Locker', 'value': 'Locker'},
@@ -701,8 +735,10 @@ def edit_post(post_id):
                 {'label': 'Corral', 'value': 'Corral'},
                 {'label': 'Indoor', 'value': 'Indoor'}
             ], name='type', required=True, value=post.type),
-            input('Amount of Available Space', name='amount', type=NUMBER, min='0', required=True, value=post.amt_slots),
-            textarea('Content', name='content', required=True, value=post.content, wrap='hard'),
+            input('Amount of Available Space', name='amount', type=NUMBER, min='0', required=True,
+                  value=post.amt_slots),
+            textarea('Content', name='content', required=True, value=post.content, wrap='hard',
+                     help_text='Describe the parking spot in detail including exact location'),
             actions('', [
                 {'label': 'Update', 'value': 'update', 'type': 'submit'},
                 {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
@@ -1278,13 +1314,12 @@ def crime_report_feeds():
 
     generate_header()
     generate_nav()
-
-    if valid_user is not None and valid_user.id == 3: # police staff
+    if valid_user is not None and valid_user.id == 3:  # police staff
         put_buttons([
             {'label': 'Emergency Crime Reports', 'value': 'crime_report_feeds_by_emergency', 'color': 'danger'}
         ], onclick=[crime_report_feeds_by_emergency]).style('float:right; margin-top: 12px;')
         put_html('<h2>All Crime Reports</h2>')
-    else: # all other users
+    else:  # power users
         put_buttons([
             {'label': 'Report a Crime', 'value': 'report_crime', 'color': 'success'}
         ], onclick=[report_crime]).style('float:right; margin-top: 12px;')
@@ -1313,6 +1348,61 @@ def crime_report_feeds():
     except SQLAlchemyError:
         toast('An error occurred', color='error')
     else:
+        for crime in crimes:
+            crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
+            row = [
+                seriesNum,
+                crime.id,
+                crime.title,
+                crime.category,
+                crimeDateTime,
+                crime.status,
+                put_buttons([
+                    {'label': 'View', 'value': 'view', 'color': 'primary'},
+                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                ], onclick=[partial(view_crime, crime.id), partial(delete_crime, crime.id)], group=True)
+            ]
+
+            crime_table_data.append(row)
+            seriesNum += 1
+
+        header = [
+            'No',
+            'Ref ID',
+            'Title',
+            'Nature',
+            'Date',
+            'Status',
+            'Action'
+        ]
+
+        put_table(crime_table_data, header=header)
+
+
+def crime_report_feeds_by_emergency():
+    clear()
+    global valid_user
+    if valid_user is None or get_role_id() != 3:
+        toast('You do not have permission to view this page', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+    put_buttons([
+        {'label': 'All Crime Reports', 'value': 'crime_report_feeds', 'color': 'secondary'}
+    ], onclick=[crime_report_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Emergency Reports</h2>')
+
+    crime_table_data = []
+    with Session() as sesh:
+        crimes = sesh.query(CrimeReport).filter(CrimeReport.is_emergency == True).all()
+        crimeCount = len(crimes)
+        if crimeCount == 0:
+            put_html('<p class="lead text-center">There is no police reports</p>')
+            return
+
+        seriesNum = 1
         for crime in crimes:
             crimeDateTime = crime.date_time.strftime('%d %b, %Y')  # format the date
             crime_table_data.append([
@@ -1417,10 +1507,10 @@ def report_crime():
                onchange=lambda c: input_update('other', placeholder='Please specify', hidden=False,
                                                required=False) if c == 'Other' else input_update('other', hidden=True)),
         input('', name='other', required=False, hidden=True, maxlength=20),
-        input('Where is this happening?', name='location', required=True, maxlength=30,
-              placeholder='e.g. \'Gateshead Trinity Square\' or \'NE8 1AG\''),
-        textarea('Description', name='content', required=True, wrap='hard'),
-        checkbox('Is this an emergency?', name='emergency', options=[{'label': 'Yes', 'value': True}]),
+        select('Location', locations_list, name='location', required=True),
+        textarea('Description', name='content', required=True, wrap='hard',
+                 help='Please provide as much detail as possible including the exact location'),
+        checkbox('Is this an emergency?', name='emergency', options=[{'label': 'Yes - Notify Police', 'value': True}]),
         actions('', [
             {'label': 'Report', 'value': 'report', 'type': 'submit'},
             {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
@@ -1633,7 +1723,7 @@ def respond_chat(crime_id):
         view_crime(crime_id)
 
 @use_scope('ROOT', clear=True)
-def notifications_panel():
+def notification_feeds():
     """
     This function will display the notifications panel for the user.
     """
@@ -1752,6 +1842,7 @@ def bigger_font():
     run_js(js_code)
     print(smaller_font_clicks, bigger_font_clicks)
 
+
 def generate_header():
     """
     This function generates the header of the page.
@@ -1799,33 +1890,37 @@ def generate_nav():
     # global navigation buttons regardless of the user role
     globalNavBtns = [
         {'label': 'Home', 'value': 'home', 'color': 'primary'},
-        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'}
+        {'label': 'Community Forum', 'value': 'admin', 'color': 'info'},
+        {'label': f'🔔', 'value': 'view_notifications', 'color': 'success'}
     ]
 
     if valid_user is None or valid_user.role_id == 1:  # if the user registered (Standard User)
         put_buttons([
             globalNavBtns[0],
-            globalNavBtns[1]
-        ], onclick=[main, forum_feeds])
+            globalNavBtns[1],
+            globalNavBtns[2],
+        ], onclick=[main, forum_feeds, notification_feeds])
     elif valid_user.role_id == 2:  # if the user is a Power User
         # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
+            globalNavBtns[2],
             {'label': 'My Police Reports', 'value': 'crime_reports', 'color': 'warning'}
-        ], onclick=[main, forum_feeds, crime_report_feeds])
+        ], onclick=[main, forum_feeds, notification_feeds, crime_report_feeds])
     elif valid_user.role_id == 3:  # if the user is a Police Staff (Police User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'Manage Crime Reports', 'value': 'crime_reports', 'color': 'danger'}
-        ], onclick=[main, forum_feeds, crime_report_feeds])
+            globalNavBtns[2],
+            {'label': 'Manage Crime Reports', 'value': 'manage_users', 'color': 'danger'}
+        ], onclick=[main, forum_feeds, notification_feeds, crime_report_feeds])
     elif valid_user.role_id == 4:  # if the user is a Council Staff (Council User)
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
-            {'label': 'Announce Updates', 'value': 'manage_users', 'color': 'success'}
-        ], onclick=[main, forum_feeds, notifications_panel])
+            globalNavBtns[2]
+        ], onclick=[main, forum_feeds, notification_feeds])
 
 
 # function to generate a card from post data (dummy data for placeholder purpose)
