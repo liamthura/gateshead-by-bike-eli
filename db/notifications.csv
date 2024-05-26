@@ -1,0 +1,3 @@
+id,user_id,by_role_id,title,content,date_time,category,status
+1,3,3,Test Notification,This is a test notification by Police,2024-05-22 07:01:54.925126,Crime Update,Active
+2,4,4,Test Notification,This is a test notification by Council,2024-05-22 07:26:05.829381,Site Update,Active

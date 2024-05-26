@@ -16,6 +16,12 @@ from datetime import datetime
 
 rolesImport = pd.read_csv('db/roles.csv')
 locationsImport = pd.read_csv('db/locations.csv')
+usersImport = pd.read_csv('db/users.csv')
+postsImport = pd.read_csv('db/posts.csv')
+threadsImport = pd.read_csv('db/threads.csv')
+flagsImport = pd.read_csv('db/content_reports.csv')
+crimeReportsImport = pd.read_csv('db/crime_reports.csv')
+notificationsImport = pd.read_csv('db/notifications.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -282,12 +288,24 @@ class Notification(Base):
 # Creating the tables in the database
 Base.metadata.create_all(db)
 
-# Inserting default user roles and locations into the respective table if it is empty (for first run)
+# Inserting default user roles and other dummy data into the respective tables if they are empty (for first run)
 with Session() as sesh:
     if sesh.query(Role).count() == 0:
         rolesImport.to_sql('roles', db, if_exists='append', index=False)
     if sesh.query(Location).count() == 0:
         locationsImport.to_sql('locations', db, if_exists='append', index=False)
+    if sesh.query(User).count() == 0:
+        usersImport.to_sql('users', db, if_exists='append', index=False)
+    if sesh.query(ParkingPost).count() == 0:
+        postsImport.to_sql('posts', db, if_exists='append', index=False)
+    if sesh.query(Thread).count() == 0:
+        threadsImport.to_sql('threads', db, if_exists='append', index=False)
+    if sesh.query(ContentReport).count() == 0:
+        flagsImport.to_sql('content_reports', db, if_exists='append', index=False)
+    if sesh.query(CrimeReport).count() == 0:
+        crimeReportsImport.to_sql('crime_reports', db, if_exists='append', index=False)
+    if sesh.query(Notification).count() == 0:
+        notificationsImport.to_sql('notifications', db, if_exists='append', index=False)
 
 #### GLOBAL VARIABLES ####
 

@@ -1,0 +1,6 @@
+id,date_time,user_id,location,type,content,amt_slots
+1,2024-05-25 01:03:52.023008,,Newcastle,Shelter,asdf,23dsafsa
+2,2024-05-25 01:05:29.424683,,test location,Corral,lote chin tr lote kya,30
+3,2024-05-25 01:26:27.719054,1,test,Rack,test,2
+4,2024-05-25 01:26:27.719054,1,tetsts,Rack,set,42
+5,2024-05-25 15:51:58.392758,,"School, College & University",Shelter,Northumbria University,5

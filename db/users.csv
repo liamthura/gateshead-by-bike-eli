@@ -1,0 +1,5 @@
+id,username,display_name,password,role_id
+1,standarduser,standarduser,demouser,1
+2,poweruser,Lettice,demouser,2
+3,policeuser,Boy In Blue,demouser,3
+4,counciluser,Taxman,demouser,4
