@@ -2076,10 +2076,82 @@ def police_manage_notifications():
 # MYAT THIRI KHANT'S IMPLEMENTATION STARTS HERE
 
 def council_create_update():
+    #this is the page for council staff site management
     clear()
     scroll_to('ROOT', position='top')
-    put_html('<p class="lead center">This part can be found in Myat Thiri Khant\'s Individual Implementation Code.</p>')
+    global valid_user
+    generate_header()
+    generate_nav()
+    if valid_user is not None and get_role_id(valid_user.id) == 4:
+        put_buttons([
+            {'label': 'Create an announcement', 'value': 'create_announcement', 'color': 'success'},
+            {'label': 'My announcements', 'value': 'view_own_announcements', 'color': 'info'},
+        ], onclick=[create_announcement, view_own_announcements]).style('float:right; margin-top: 12px;')
+    else:
+        put_buttons([
+            {'label': 'View announcements', 'value': 'view_announcements', 'color': 'info'},
+        ], onclick=view_announcements).style('float:right; margin-top: 12px;')
+        put_html('<h2>Announcements</h2>')
+        get_announcements()
 
+
+def create_announcement():
+    #when a council staff wants to create an announcement
+    clear()
+    global valid_user
+
+    generate_header()
+    generate_nav()
+    put_buttons(['Back to Announcements'], onclick=[council_create_update]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Post an Announcement</h2>')
+
+    createAnnouncementForm = [
+        input('Title', name='title', required=True),
+        textarea('Detailed Description', name='content', required=True),
+        select('Improvement Type',options=['Bike Parking Facilities', 'Cycling Routes',
+        'Safety Enhancements', 'Maintenance'],name='improvementType', multiple=False),
+        select('Status',options=['Active','Archived'],name='status', multiple=False),
+        actions('', [
+        {'label': 'Announce', 'value': 'announce', 'type': 'submit'},
+        {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='announcement_actions')
+    ]
+
+    announcementData = input_group('Post an announcement', createAnnouncementForm, cancelable=True)
+    try:
+        if announcementData is None or announcementData['announcement_actions'] == 'cancel':
+            clear()
+            raise ValueError('Announcement creation cancelled')
+        if announcementData['announcement_actions'] == 'announce':
+            with Session as sesh:
+                new_announcement = Notification(user_id=get_user_id(),
+                                                by_role_id=get_role_id(),
+                                                title=announcementData['title'],
+                                                content=announcementData['content'],
+                                                date_time=datetime.now(),
+                                                category=announcementData['improvementType'],
+                                                status=announcementData['status'],
+                                                )
+                sesh.add(new_announcement)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Announcement posted successfully', color='success')
+    finally:
+        council_create_update()
+
+#def get_announcements():
+    #to get all the announcements created
+    #global valid_user
+    #announcementModeration = None
+
+    #with Session as sesh:
+        #if valid_user is not None and get_role_id(valid_user.id) == 4:
+
+        #else:
 
 def council_manage_updates():
     clear()
