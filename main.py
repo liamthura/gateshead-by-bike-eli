@@ -22,6 +22,7 @@ threadsImport = pd.read_csv('db/threads.csv')
 flagsImport = pd.read_csv('db/content_reports.csv')
 crimeReportsImport = pd.read_csv('db/crime_reports.csv')
 notificationsImport = pd.read_csv('db/notifications.csv')
+ratingsImport = pd.read_csv('db/ratings.csv')
 
 # Creating a SQLite Database 'gbb-eli.db' with SQLAlchemy
 sqlite_file_name = "gbb-eli.db"
@@ -298,6 +299,8 @@ with Session() as sesh:
         usersImport.to_sql('users', db, if_exists='append', index=False)
     if sesh.query(ParkingPost).count() == 0:
         postsImport.to_sql('posts', db, if_exists='append', index=False)
+    if sesh.query(ParkingRating).count() == 0:
+        ratingsImport.to_sql('ratings', db, if_exists='append', index=False)
     if sesh.query(Thread).count() == 0:
         threadsImport.to_sql('threads', db, if_exists='append', index=False)
     if sesh.query(ContentReport).count() == 0:
@@ -510,14 +513,14 @@ def get_username(user_id=None):
     :return: "Guest User" if the user is not logged in, a dictionary of username and display name if the user is logged in, or that of the user ID provided
     """
     global valid_user
-    if valid_user is not None and user_id is None:
-        return valid_user.username
-    elif valid_user is not None and user_id is not None:
+    if user_id is not None:
         with Session() as sesh:
             selected_user = sesh.query(User).filter_by(id=user_id).first()
             username = selected_user.username
             display_name = selected_user.display_name
         return {'username': username, 'display_name': display_name}
+    elif valid_user is not None and user_id is None:
+        return valid_user.username
     else:
         return {'display_name': 'Guest User'}
 
@@ -981,7 +984,7 @@ def own_forum_feeds():
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'}
         ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>My Forum Threads</h2>')
+    put_html('<h2>Community Forum</h2>')
 
     get_threads(valid_user.id)
 
@@ -1046,8 +1049,7 @@ def get_threads(user_id=None):
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                # TODO change main file to sort comments by ascending order
-                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.asc()).all()
+                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
                 # print(len(comments))
                 if len(comments) != 0:  # show if there are comments in the thread
                     put_html('<p class="h5 fw-bolder">Comments</p>')
