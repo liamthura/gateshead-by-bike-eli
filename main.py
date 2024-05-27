@@ -375,6 +375,15 @@ def user_login(username=None):
         ], name="user_action"),
     ]
 
+    put_markdown(f'''
+        ### Demo User Logins   
+        - **Standard User**: username: standarduser
+        - **Power User**: username: poweruser
+        - **Police Staff**: username: policeuser
+        - **Council Staff**: username: counciluser
+        - **Password for all**: demouser
+        ''')
+
     data = input_group("User Log In", loginFields, cancelable=True)
 
     if data is None or data['user_action'] == 'cancel':  # if user cancels the login with no data
