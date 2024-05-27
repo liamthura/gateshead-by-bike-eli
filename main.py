@@ -981,7 +981,7 @@ def own_forum_feeds():
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'}
         ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Community Forum</h2>')
+    put_html('<h2>My Forum Threads</h2>')
 
     get_threads(valid_user.id)
 
@@ -1046,7 +1046,8 @@ def get_threads(user_id=None):
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
+                # TODO change main file to sort comments by ascending order
+                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.asc()).all()
                 # print(len(comments))
                 if len(comments) != 0:  # show if there are comments in the thread
                     put_html('<p class="h5 fw-bolder">Comments</p>')
@@ -1086,7 +1087,7 @@ def add_comment(parent_thread_id):
             with Session() as sesh:
                 parent_thread = sesh.query(Thread).filter_by(id=parent_thread_id).first()
                 new_comment = Thread(user_id=valid_user.id,
-                                     title=f'Comment by {get_username(valid_user.id)} to thread: {parent_thread.title}',
+                                     title=f'Comment by {get_username(valid_user.id)["username"]} to thread: {parent_thread.title}',
                                      content=comment_data, parent_id=parent_thread.id, date_time=datetime.now(),
                                      up_votes=0, down_votes=0, flags=0)
                 sesh.add(new_comment)
@@ -2011,7 +2012,6 @@ def generate_nav():
             globalNavBtns[2],
         ], onclick=[main, forum_feeds, notification_feeds])
     elif valid_user.role_id == 2:  # if the user is a Power User
-        # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
@@ -2074,6 +2074,7 @@ def police_create_notification(pre_data=None):
         else:
             toast('Notification posted successfully', color='success')
         finally:
+            clear()
             notification_feeds()
 
     global valid_user
