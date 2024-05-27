@@ -1,5 +1,5 @@
 id,name,color
 1,Standard User,secondary
-2,Power User,primary
-3,Police Staff,info
-4,Council Staff,success
+2,Power User,success
+3,Police Staff,primary
+4,Council Staff,info
