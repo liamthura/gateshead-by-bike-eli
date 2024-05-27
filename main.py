@@ -1841,64 +1841,32 @@ def notification_feeds():
     put_html('<h2>Notifications</h2>')
 
     with Session() as sesh:
-        notifications = sesh.query(Notification).order_by(Notification.id.desc()).all()
+        notifications = sesh.query(Notification).order_by(Notification.id.desc()).filter_by(status="Active").all()
         notificationCount = len(notifications)
         if notificationCount == 0:
             put_html('<p class="lead text-center">There is no notifications</p>')
             return
         for notification in notifications:
             notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')  # format the date
-            if valid_user is not None and valid_user.role_id == 3:  # police staff
-                # use put_info to display the notification with a close button
-                put_info(
-                    put_html(f'''
-                    <div class="card p-2">
-                        <div class="card-body p-2">
-                        <h4 class="card-title m-0">
-                        {notification.category}: {notification.title} 
-                        {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
-                        </h4>
-                        {f'<p class="mb-0">By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
-                        
-                        <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
-                        <p class="card-text">{notification.content}</p>
-                        </div>
+            # if the user is a council staff, show the council badge or police badge for police staff
+            # police staff and council staff will see the names of the members who created the notifications from their own role
+            put_info(
+                put_html(f'''
+                <div class="card p-2">
+                    <div class="card-body p-2">
+                    <h4 class="card-title m-0">
+                    {notification.category}: {notification.title} 
+                    {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
+                    </h4>
+                    {f'<p class="mb-0">By Police Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user is not None and valid_user.role_id == 3 and notification.by_role_id == 3 else ''}
+                    {f'<p class="mb-0">By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user is not None and valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
+                    
+                    <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
+                    <p class="card-text">{notification.content}</p>
                     </div>
-                    '''), closable=True
-                ).style('margin-bottom: 10px;')
-            elif valid_user is not None and valid_user.role_id == 4:  # council staff
-                # use put_info to display the notification with a close button
-                put_info(
-                    put_html(f'''
-                    <div class="card p-2">
-                        <div class="card-body p-2">
-                        <h4 class="card-title m-0">
-                        {notification.category}: {notification.title} 
-                        {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
-                        </h4>
-                        {f'<p class="mb-0">By Council Member: {get_username(notification.user_id)["display_name"]}</p>' if valid_user.role_id == 4 and notification.by_role_id == 4 else ''}
-                        <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
-                        <p class="card-text">{notification.content}</p>
-                        </div>
-                    </div>
-                    '''), closable=True
-                ).style('margin-bottom: 10px;')
-            else:  # all other users
-                put_info(
-                    put_html(f'''
-                                <div class="card p-2">
-                                    <div class="card-body p-2">
-                                    <h4 class="card-title m-0">
-                                    {notification.category}: {notification.title} 
-                                    {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>' if notification.by_role_id == 3 else f'<strong class="badge bg-info text-light">Gateshead Council</strong>'} 
-                                    </h4>
-
-                                    <p class="card-subtitle mb-2"><small>{notificationDateTime}</small>
-                                    <p class="card-text">{notification.content}</p>
-                                    </div>
-                                </div>
-                                '''), closable=True
-                ).style('margin-bottom: 10px;')
+                </div>
+                '''), closable=True
+            ).style('margin-bottom: 10px;')
 
 
 #### ACCESSIBILITY GUI FUNCTIONS by KT ####
@@ -1916,8 +1884,6 @@ def change_appearance():
         config(theme='dark')
     elif appearance == 2:
         config(theme='sketchy')
-    elif appearance == 3:
-        config(theme='yeti')
     else:
         appearance = 0
         config(theme='default')
