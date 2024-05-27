@@ -2055,17 +2055,185 @@ def respond_chat(crime_id):
 
 # KHANT THURA'S IMPLEMENTATION STARTS HERE
 
-def police_create_notification():
+def police_create_notification(pre_data=None):
     clear()
-    scroll_to('ROOT', position='top')
-    put_html('<p class="lead center">This part can be found in Khant Thura\'s Individual Implementation Code.</p>')
+
+    def post_notification(data):
+        try:
+            with Session() as sesh:
+                new_notification = Notification(user_id=valid_user.id, title=notification_data['title'].strip(),
+                                                category=notification_data['category'].strip(),
+                                                content=notification_data['content'].strip(),
+                                                date_time=datetime.now(), by_role_id=3,
+                                                status=notification_data['status'])
+                sesh.add(new_notification)
+                sesh.commit()
+        except SQLAlchemyError:
+            toast('An error occurred', color='error')
+        else:
+            toast('Notification posted successfully', color='success')
+        finally:
+            notification_feeds()
+
+    global valid_user
+    if valid_user is None or valid_user.role_id != 3:
+        toast('You do not have permission to post notifications', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+
+    put_html('<h2>Post a Notification</h2>')
+
+    notification_fields = [
+        input('Title', name='title', required=True, maxlength=50,
+              value=pre_data["title"] if pre_data is not None else "", validate=lambda c: f'Must be more then 4 characters and less than 50 characters. {len(c.strip())}/50' if len(c.strip()) < 4 or len(c.strip()) > 50 else None),
+        select('Category', ['Emergency Alert',
+                            'Crime Alert',
+                            'Public Safety Announcement',
+                            'Traffic Advisory',
+                            'Missing Vehicle Alert',
+                            'Crime Prevention Tips',
+                            'Other'], name='category', required=True,
+               onchange=lambda c: input_update('other', placeholder='Please specify', hidden=False,
+                                               required=True) if c == 'Other' else input_update('other', hidden=True,
+                                                                                                required=False),
+               value=pre_data["category"] if pre_data is not None and pre_data["category"] != "Other" else ""),
+        input('', name='other', required=False, hidden=True, placeholder='Please specify', validate=lambda c: f'No more then 30 characters. {len(c.strip())}/30' if len(c.strip()) > 30 else None,
+              value=pre_data["category"] if pre_data is not None and pre_data['other'] is not None else None),
+        textarea('Content', name='content', required=True, wrap='hard', rows=5,
+                 value=pre_data["content"] if pre_data is not None else ""),
+        select('Status', ['Active', 'Archived'], name='status', required=True,
+               value=pre_data["status"] if pre_data is not None else "Active", help_text='Active notifications are visible to all users. Archived notifications are only visible to you.'),
+        actions('', [
+            {'label': 'Post Notification', 'value': 'post', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='notification_actions')
+    ]
+
+    notification_data = input_group('Post a Notification', notification_fields)
+
+    if notification_data is None or notification_data['notification_actions'] == 'cancel':
+        clear()
+        notification_feeds()
+        return
+    if notification_data['notification_actions'] == 'post':
+        if notification_data['category'] == 'Other' and notification_data['other'] is not None:
+            notification_data['category'] = notification_data['other'].title()
+        popup('Notification Preview', [
+            put_html(f'''
+            <div class="card p-2">
+                <div class="card-body p-2">
+                <h4 class="card-title m-0">
+                {notification_data['category']}: {notification_data['title']} 
+                {f'<strong class="badge bg-primary text-light">Northumbria Police</strong>'} 
+                </h4>
+
+                <p class="card-subtitle mb-2"><small>{datetime.now().strftime('%I:%M%p – %d %b, %Y')}</small>
+                <p class="card-text">{notification_data['content']}</p>
+                </div>
+            </div>
+            ''').style('margin-bottom: 10px;'),
+            put_html(
+                f'<p class="small text-danger">Notification Status is set to <strong>Archived</strong>. The notification won\'t be visible to anyone else.</p>') if
+            notification_data['status'] == 'Archived' else "",
+            put_html(
+                f'<p class="small text-danger"><strong>You won\'t be able to edit this notification content after posting. You can only change status.</strong></p>'),
+            put_actions('confirmation_actions', buttons=[
+                {'label': 'Confirm Notification', 'value': 'confirm', 'type': 'submit', 'color': 'primary'},
+                {'label': 'Edit or Cancel', 'value': 'edit', 'type': 'submit', 'color': 'warning'}])
+        ], size='large', closable=False)
+        # print(pin.confirmation_actions)
+        while True:
+            # print('waiting')
+            action = pin_wait_change('confirmation_actions')
+            # print(action)
+            if action['value'] == 'confirm':
+                close_popup()
+                post_notification(notification_data)
+            elif action['value'] == 'edit':
+                close_popup()
+                police_create_notification(notification_data)
 
 
 def police_manage_notifications():
     clear()
-    scroll_to('ROOT', position='top')
-    put_html('<p class="lead center">This part can be found in Khant Thura\'s Individual Implementation Code.</p>')
 
+    def change_notification_status(notification_id):
+        with Session() as sesh:
+            selected_notification = sesh.query(Notification).filter_by(id=notification_id).first()
+            if selected_notification.status == 'Active':
+                selected_notification.status = 'Archived'
+            else:
+                selected_notification.status = 'Active'
+            sesh.add(selected_notification)
+            sesh.commit()
+            toast(f'Notification status has been changed to "{selected_notification.status}"', color='success')
+        police_manage_notifications()
+
+    def delete_notification(notification_id):
+        clear()
+        generate_header()
+        generate_nav()
+
+        def confirm_delete():
+            with Session() as sesh:
+                selected_notification = sesh.query(Notification).filter_by(id=notification_id).first()
+                sesh.delete(selected_notification)
+                sesh.commit()
+            toast(f'Notification "{selected_notification.title}" has been deleted', color='success')
+            police_manage_notifications()
+
+        put_html('<h2>Delete Notification</h2>')
+        put_warning(put_markdown(f'''## Warning!   
+                                 Are you sure you want to delete this notification? This action cannot be undone.'''))
+        put_buttons([
+            {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
+            {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
+        ], onclick=[confirm_delete, police_manage_notifications])
+
+    global valid_user
+    if valid_user is None or valid_user.role_id != 3:
+        toast('You do not have permission to manage notifications', color='warning')
+        main()
+        return
+
+    generate_header()
+    generate_nav()
+
+    put_button('Post a Notification', onclick=police_create_notification).style('float:right; margin-top: 12px;')
+    put_html('<h2>My Notification</h2>')
+
+    notification_table_data = []
+    with Session() as sesh:
+        notifications = sesh.query(Notification).order_by(Notification.id.desc()).filter_by(user_id=valid_user.id).all()
+        notificationCount = len(notifications)
+        if notificationCount == 0:
+            put_html('<p class="lead text-center">You have not posted any notifications</p>')
+            return
+        for notification in notifications:
+            notificationDateTime = notification.date_time.strftime('%I:%M%p – %d %b, %Y')
+            notification_table_data.append([
+                notification.id,
+                notification.category,
+                notification.title,
+                notificationDateTime,
+                notification.status,
+                put_buttons([
+                    {'label': 'Change Status', 'value': 'change_status', 'color': 'info'},
+                    {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                ], onclick=[partial(change_notification_status, notification.id), partial(delete_notification, notification.id)]).style("display: flex; justify-content: start; gap: 5px; flex-direction: column;")
+            ])
+
+        put_table(notification_table_data, header=[
+            'Ref ID',
+            'Category',
+            'Title',
+            'Date',
+            'Status',
+            'Action'
+        ])
 
 # all other code of KT code should be placed here
 
