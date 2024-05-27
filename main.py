@@ -705,8 +705,8 @@ def get_posts(user_id=None):
         if postCount > 10:
             put_html(f'<p class="text-center">View more posts</p>')
 
-
-def add_rating(post_id):  # post_id need to be passed here by ivy (set default 1 for testing)
+#rating features by Myat Thiri Khant
+def add_rating(post_id):
     """
     Function to add a rating to a post
     :param post_id: ID of the post to be rated
@@ -901,6 +901,7 @@ def delete_post(post_id):
     ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds])
 
 
+#average rating function by Myat Thiri Khant
 def get_avg_rating(post_id):
     """
     Function to get the average rating of a post
@@ -2111,112 +2112,20 @@ def council_create_update():
     if valid_user is not None and get_role_id(valid_user.id) == 4:
         put_buttons([
             {'label': 'Create an announcement', 'value': 'create_announcement', 'color': 'success'},
-            {'label': 'My announcements', 'value': 'view_own_announcements', 'color': 'info'},
-        ], onclick=[create_announcement, view_own_announcements]).style('float:right; margin-top: 12px;')
+            {'label': 'My announcements', 'value': 'council_manage_updates', 'color': 'info'},
+        ], onclick=[create_announcement, council_manage_updates()]).style('float:right; margin-top: 12px;')
     else:
         '''if the user is not a council staff'''
 
     put_html('<h2>Announcements</h2>')
-    get_announcements()
+    get_announcements(user_id=None)
 
 
-def create_announcement():
-    #when a council staff wants to create an announcement
-    clear()
-    global valid_user
-
-    generate_header()
-    generate_nav()
-    put_buttons(['Back to Announcements'], onclick=[council_create_update]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Post an Announcement</h2>')
-
-    createAnnouncementForm = [
-        input('Title', name='title', required=True),
-        textarea('Detailed Description', name='content', required=True),
-        select('Improvement Type',options=['Bike Parking Facilities', 'Cycling Routes',
-        'Safety Enhancements', 'Maintenance'],name='improvementType', multiple=False),
-        select('Status',options=['Active','Archived'],name='status', multiple=False),
-        actions('', [
-        {'label': 'Announce', 'value': 'announce', 'type': 'submit'},
-        {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
-        ], name='announcement_actions')
-    ]
-
-    announcementData = input_group('Post an announcement', createAnnouncementForm, cancelable=True)
-    try:
-        if announcementData is None or announcementData['announcement_actions'] == 'cancel':
-            clear()
-            raise ValueError('Announcement creation cancelled')
-        if announcementData['announcement_actions'] == 'announce':
-            with Session as sesh:
-                new_announcement = Notification(user_id=get_user_id(),
-                                                by_role_id=get_role_id(),
-                                                title=announcementData['title'],
-                                                content=announcementData['content'],
-                                                date_time=datetime.now(),
-                                                category=announcementData['improvementType'],
-                                                status=announcementData['status'],
-                                                )
-                sesh.add(new_announcement)
-                sesh.commit()
-    except ValueError as ve:
-        toast(f'{str(ve)}', color='error')
-    except SQLAlchemyError:
-        toast('An error occurred', color='error')
-    else:
-        toast('Announcement posted successfully', color='success')
-    finally:
-        council_create_update()
-
-def get_announcements(user_id=None):
-    #to get all the announcements created
-    global valid_user
-    announcementModeration = None
-
-    with Session as sesh:
-        if valid_user is not None:
-            announcements = sesh.query(Notification).filter_by(user_id=valid_user.id, parent_id=None).order_by(Notification.id.desc()).limit(20).all()
-        else:
-            announcements = sesh.query(Notification).filter_by(parent_id=None).order_by(Notification.id.desc()).limit(20).all()
-
-        if len(announcements) == 0:
-            put_html('<p>No announcements found</p>'.style('text-align:center;'))
-            return
-
-        for announcement in announcements:
-            with use_scope(f'announcements-{announcement.id}'):
-                if user_id is not None or (
-                user_id is None and valid_user is not None and announcement.user_id == valid_user.id):
-                    announcementModeration = put_buttons([
-                        {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
-                        {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                    ], onclick=[partial(edit_announcement, announcement.id), partial(delete_announcement, announcement.id)], small=True)
-
-                else:
-                    announcementModeration = None
-
-                # to show the date and time of announcement created
-                announcementsDateTime = announcement.date_time.strftime('%I:%M%p – %d %b, %Y')
-                put_html(f'''
-                <div class="card">
-                    <div class="card-header">
-                    <h2 class="card-title" style = "margin: 8px 0;>{announcement.category}</h2>
-                    <p class="card-subtitle mt-0"> By <strong> {get_username(announcement.user_id)["display_name"
-                ]} </strong> on {get_user_badge(announcement.user_id) if get_role_id(announcement,user_id)
-                != 1 else ''} at {announcementsDateTime}</p>
-                </div>
-                
-                <div class="card-body">
-                    <p style="white-space: pre-wrap;">Title: {announcement.title}</p>
-                    <p style="white-space: pre-wrap;">Detailed Description: {announcement.content}</p>
-                    <p style="white-space: pre-wrap;">Status: {announcement.status}</p>
-                
-                </div>
-                ''').style('margin-bottom: 10px;')
 
 
+
+@use_scope('ROOT', clear=True)
 def view_own_announcements():
-    #this is the page for council staff to view their own announcements
     clear()
     global valid_user
 
@@ -2227,20 +2136,18 @@ def view_own_announcements():
 
 
 def edit_announcement(announcement_id):
-    #ONLY available to edit the announcement created by the owner
     clear()
     global valid_user
     generate_header()
     generate_nav()
-
 
 
 def delete_announcement(announcement_id):
-    #ONLY available to delete the announcement created by the owner
     clear()
     global valid_user
     generate_header()
     generate_nav()
+
 
 def council_manage_updates():
     clear()
