@@ -2135,6 +2135,40 @@ def edit_announcement(notification_id):
     generate_header()
     generate_nav()
 
+    with Session() as sesh:
+        announcement = sesh.query(Notification).filter_by(id=notification_id).first()
+        editAnnouncement = [
+            input('Title', name='title', required=True),
+            textarea('Detailed Description', name='content', required=True),
+            select('Improvement Type', options=['Bike Parking Facilities', 'Cycling Routes',
+                                                'Safety Enhancements', 'Maintenance'], name='improvementType',
+                   multiple=False),
+            select('Status', options=['Active', 'Archived'], name='status', multiple=False),
+            actions('', [
+                {'label': 'Save', 'value': 'save', 'type': 'submit'},
+                {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+            ], name='announcement_actions')
+        ]
+    announcementData = input_group('Edit Announcement', editAnnouncement, cancelable=True)
+    try:
+        if announcementData is None or announcementData['announcement_actions'] == 'cancel':
+            raise ValueError('Announcement edit cancelled')
+        elif announcementData['announcement_actions'] == 'save':
+            with Session() as sesh:
+                announcement.title = announcementData['title']
+                announcement.content = announcementData['content']
+                announcement.category = announcementData['improvementType']
+                announcement.status = announcementData['status']
+                sesh.add(announcement)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
+    else:
+        toast('Announcement posted successfully', color='success')
+    finally:
+        notification_feeds()
 
 def delete_announcement(anncouncement_id):
     clear()
@@ -2151,6 +2185,7 @@ def council_manage_updates():
 
     generate_header()
     generate_nav()
+    put_buttons(['Back to Announcements'], onclick=[notification_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>My Announcements</h2>')
     get_announcement(valid_user.id)
 
@@ -2158,8 +2193,11 @@ def get_announcement(user_id):
     global valid_user
     with Session() as sesh:
         if user_id is not None:
+            print("A user ID", user_id)
             announcements = sesh.query(Notification).filter_by(user_id=user_id).all()
+            print("Announcements", announcements)
         else:
+            print("No user ID")
             announcements = sesh.query(Notification).filter_by(notification_feeds.id).all()
 
         if len(announcements) == 0:
@@ -2167,12 +2205,20 @@ def get_announcement(user_id):
             return
         for announcement in announcements:
             with use_scope(f'announcement-{announcement.id}'):
+                put_html(f'''
+                    <div class="announcementDisplay">
+                        <h3>{announcement.title}</h3><h5>{announcement.date_time.strftime("%d %b, %Y")}</h5>
+                        <h6>Improvement Type: {announcement.category} - {announcement.status}</h6>
+                        <p>{announcement.content}</p>
+                     </div>
+                ''').style('margin-bottom: 10px; border: 1px solid black; padding: 10px; background-color: #e7ecef;')
                 if user_id is not None or (user_id is None and
                                            valid_user is not None and announcement.user_id == valid_user.id):
                     put_buttons([
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
                     ], onclick=[partial(edit_announcement, announcement.id), partial(delete_announcement, announcement.id)], small=True)
+                    put_html('<br>')
                 else:
                     ''
 
