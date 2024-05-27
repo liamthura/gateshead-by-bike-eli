@@ -2047,7 +2047,6 @@ def generate_nav():
             globalNavBtns[2],
         ], onclick=[main, forum_feeds, notification_feeds])
     elif valid_user.role_id == 2:  # if the user is a Power User
-        # TODO:  Attach navigation screens here
         put_buttons([
             globalNavBtns[0],
             globalNavBtns[1],
