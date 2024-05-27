@@ -2092,8 +2092,7 @@ def council_create_update():
         input('Title', name='title', required=True),
         textarea('Detailed Description', name='content', required=True),
         select('Improvement Type', options=['Bike Parking Facilities', 'Cycling Routes',
-                                            'Safety Enhancements', 'Maintenance'], name='improvementType',
-               multiple=False),
+                'Safety Enhancements', 'Maintenance'], name='improvementType', multiple=False),
         select('Status', options=['Active', 'Archived'], name='status', multiple=False),
         actions('', [
             {'label': 'Announce', 'value': 'announce', 'type': 'submit'},
@@ -2138,12 +2137,12 @@ def edit_announcement(notification_id):
     with Session() as sesh:
         announcement = sesh.query(Notification).filter_by(id=notification_id).first()
         editAnnouncement = [
-            input('Title', name='title', required=True),
-            textarea('Detailed Description', name='content', required=True),
+            input('Title', name='title', required=True, value=announcement.title),
+            textarea('Detailed Description', name='content', required=True, value=announcement.content),
             select('Improvement Type', options=['Bike Parking Facilities', 'Cycling Routes',
                                                 'Safety Enhancements', 'Maintenance'], name='improvementType',
-                   multiple=False),
-            select('Status', options=['Active', 'Archived'], name='status', multiple=False),
+                   multiple=False, value=announcement.category),
+            select('Status', options=['Active', 'Archived'], name='status', multiple=False, value=announcement.status),
             actions('', [
                 {'label': 'Save', 'value': 'save', 'type': 'submit'},
                 {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
@@ -2176,6 +2175,23 @@ def delete_announcement(anncouncement_id):
     generate_header()
     generate_nav()
 
+    def confirm_delete():
+        with Session() as sesh:
+            announcement = sesh.query(Notification).filter_by(id=anncouncement_id).first()
+            sesh.delete(announcement)
+            sesh.commit()
+            sesh.query(Notification).filter_by(id=anncouncement_id).delete()
+            sesh.commit()
+        toast(f'Announcement "{announcement.title}" has been deleted', color='success')
+        notification_feeds()
+    with Session() as sesh:
+        announcement = sesh.query(Notification).filter_by(id=anncouncement_id).first()
+        put_warning(put_markdown(f'''## Warning!   
+                                 Are you sure you want to delete the announcement? This action cannot be undone.'''))
+        put_buttons([
+            {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
+            {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
+        ], onclick=[confirm_delete, notification_feeds])
 
 def council_manage_updates():
     clear()
