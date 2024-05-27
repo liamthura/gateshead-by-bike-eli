@@ -1049,7 +1049,6 @@ def get_threads(user_id=None):
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                # TODO change main file to sort comments by ascending order
                 comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.asc()).all()
                 # print(len(comments))
                 if len(comments) != 0:  # show if there are comments in the thread
