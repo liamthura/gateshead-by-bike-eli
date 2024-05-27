@@ -1,5 +1,8 @@
 id,username,display_name,password,role_id
-1,standarduser,standarduser,demouser,1
+1,standarduser,Average Biker,demouser,1
 2,poweruser,Lettice,demouser,2
 3,policeuser,Boy In Blue,demouser,3
 4,counciluser,Taxman,demouser,4
+5,bikeexplorer,Bike Explorer,Demo1234,1
+6,pedalpusher,Pedal Pusher,Demo1234,2
+7,meanuser,Mean User,Demo1234,1

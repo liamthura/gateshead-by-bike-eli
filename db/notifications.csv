@@ -1,3 +1,5 @@
 id,user_id,by_role_id,title,content,date_time,category,status
-1,3,3,Test Notification,This is a test notification by Police,2024-05-22 07:01:54.925126,Crime Update,Active
-2,4,4,Test Notification,This is a test notification by Council,2024-05-22 07:26:05.829381,Site Update,Active
+1,3,3,📞👮‍♂️0191 123 4567 - New Police Helpline,"Need assistance or want to report a crime? Simply dial our new helpline number: 0191 123 4567. Our dedicated team of officers is here to help 24/7! Spread the word and stay safe, Gateshead! Together, we can make our community a safer place. 🌟",2024-05-27 05:36:26.734257,Public Safety Announcement,Active
+2,4,4,🚲 New Bike Parking Alert! 🅿️ 🚨,"Exciting news! 🎉 We've just installed brand-new bike parking spots across town. Secure, convenient, and ready for your wheels! 🚴‍♂️ Happy cycling!",2024-05-27 05:36:26.734257,New Facilities,Active
+4,3,3,Increasing Crime Reports Near Shopping Mall,"Recent thefts near shopping malls. Be vigilant, keep belongings safe. Report suspicious activity to 0191 123 4567.",2024-05-27 05:44:35.596861,Crime Alert,Active
+8,3,3,Delays and Closures on Elm Street,Construction work on Elm Street starting tomorrow. Expect delays and lane closures.,2024-05-27 05:44:50.120900,Traffic Advisory,Archived

@@ -1,6 +1,22 @@
 id,user_id,title,category,location,description,date_time,is_emergency,status
-1,1,Test report,Theft,"School, College & University",Don't know what's happening,2024-05-26 02:35:18.176583,1,Closed
-2,1,another one,Vandalism,"School, College & University",IDK!,2024-05-26 02:35:43.405862,0,Closed
-3,1,testing if the filters work for stats,Assault,Bus Station,ahhh,2024-05-26 02:36:01.113081,0,Pending
-4,1,Another one DO IT AGAIN,Other,Shopping Mall,Crime Nature: Robbery - Don't know what's happening,2024-05-26 02:40:26.714098,1,Pending
-5,1,Biker being abuse,Other,Bus Station,Crime Nature: Abuse - Suspected racism,2024-05-26 02:41:07.477827,0,Pending
+1,2,Bike Assault,Assault,Bus Station,"At approximately 8:45 PM, the victim, John Doe, a known power user, was walking alone on Main Street near the Bus Stop and intersection with Elm Street. The victim reported that he was approached by an unknown male suspect who initiated a verbal altercation. The suspect became increasingly aggressive, shouting profanities and making threats towards the victim.
+
+According to the victim, the situation escalated when the suspect lunged at him and struck him with a closed fist on the right side of his face. The victim sustained a bruise and minor swelling as a result of the assault. The suspect then fled the scene on foot before police arrival.",2024-05-27 04:47:40.991246,0,Pending
+2,2,Bike Theft at Metro Station,Theft,Metro Station,"At approximately 7:45 AM, I parked my bike at the Gateshead Metro Station bike rack before heading to work. Upon returning at 5:30 PM, I discovered that my bike had been stolen.
+
+The stolen bike is a black Trek hybrid bike, with a silver frame and red accents. It has a distinctive scratch on the left side of the frame near the pedal.",2024-05-27 04:50:11.222559,0,Under Investigation
+3,6,Tires slashed!,Vandalism,Shopping Mall,"At approximately 4:30 PM, I parked my bike in the designated bike parking area near Gateshead Shopping Mall. Upon returning at 5:00 PM, I discovered that my bike had been vandalized.
+
+The vandalism includes slashed tires and scratches along the frame of the bike. Additionally, the bike seat has been ripped and the handlebar grips damaged.",2024-05-27 04:52:13.657102,0,Pending
+4,6,Anti Social Assault near Gateshead College!,Assault,"School, College & University","At approximately 9:30 PM, I was cycling home from Gateshead College when I was confronted by a group of individuals near the entrance of the college. The group began verbally harassing me, using derogatory language and making threatening gestures.
+
+The situation escalated when one of the individuals attempted to grab my bike forcefully, causing me to lose balance and fall to the ground. While on the ground, I was kicked multiple times by several members of the group before they fled the scene.",2024-05-27 04:56:58.781001,0,Pending
+5,2,Emergency Report on Robbery,Other,Park,"Crime Nature: Robbery - At approximately 3:00 PM, I parked my bike outside a store in Gateshead Town Center while quickly running an errand. Upon returning just 10 minutes later, I discovered that my bike had been stolen.
+
+The stolen bike is a silver Giant mountain bike with distinctive red handlebar grips and a black basket attached to the front. It also has a small scratch on the frame near the seat.",2024-05-27 05:00:30.692801,1,Action Taken
+6,2,Theft at Gateshead Shopping Mall,Theft,Shopping Mall,"At approximately 6:15 PM, I witnessed a theft at Gateshead Shopping Mall. While browsing in a store, I observed an individual attempting to steal merchandise by concealing items in their bag. When approached by store security, the individual became aggressive and fled the scene.
+
+The suspect is a male, approximately 6 feet tall, wearing a black hoodie and jeans. He has short brown hair and was carrying a black backpack.",2024-05-27 05:03:59.498629,0,Pending
+7,6,Stolen Bike at Gateshead Shopping Mall,Theft,Shopping Mall,"At approximately 1:45 PM, I parked my bike in the designated bike parking area near Gateshead Shopping Mall before going inside to do some shopping. Upon returning at 2:00 PM, I discovered that my bike had been stolen.
+
+The stolen bike is a black Raleigh hybrid bike with a silver frame and blue accents. It has a small scratch on the right side of the frame near the pedal.",2024-05-27 05:06:25.278282,0,Closed

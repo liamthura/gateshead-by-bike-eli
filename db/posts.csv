@@ -1,6 +1,6 @@
 id,date_time,user_id,location,type,content,amt_slots
-1,2024-05-25 01:03:52.023008,,Newcastle,Shelter,asdf,23dsafsa
-2,2024-05-25 01:05:29.424683,,test location,Corral,lote chin tr lote kya,30
-3,2024-05-25 01:26:27.719054,1,test,Rack,test,2
-4,2024-05-25 01:26:27.719054,1,tetsts,Rack,set,42
-5,2024-05-25 15:51:58.392758,,"School, College & University",Shelter,Northumbria University,5
+1,2024-05-27 02:58:24.961452,1,Bus Station,Shelter,I just parked my bike here at Gateshead Interchange and currently have a decent amount of spare spaces available!,10
+2,2024-05-27 02:58:24.961452,1,"School, College & University",Corral,"A few spaces available at the main campus area of Gateshead College. Just asked and its also a public parking space, not just for students. Cheers :)",6
+3,2024-05-27 02:58:24.961452,1,Metro Station,Rack,"Free spaces at Felling Metro station. A bit dodgy tho, make sure you bring your own lockers.",8
+4,2024-05-27 02:58:24.961452,2,Shopping Mall,Locker,Spaces available at Trinity Square but not much. Seems to be busy for an event nearby.,2
+5,2024-05-27 02:58:24.961452,2,Park,Locker,"Just going for a run in the Windhill Mill. Saw loads of spaces available, prolly about 10 something.",10
