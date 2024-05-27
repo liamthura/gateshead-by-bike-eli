@@ -1086,7 +1086,7 @@ def add_comment(parent_thread_id):
             with Session() as sesh:
                 parent_thread = sesh.query(Thread).filter_by(id=parent_thread_id).first()
                 new_comment = Thread(user_id=valid_user.id,
-                                     title=f'Comment by {get_username(valid_user.id)} to thread: {parent_thread.title}',
+                                     title=f'Comment by {get_username(valid_user.id)["username"]} to thread: {parent_thread.title}',
                                      content=comment_data, parent_id=parent_thread.id, date_time=datetime.now(),
                                      up_votes=0, down_votes=0, flags=0)
                 sesh.add(new_comment)
