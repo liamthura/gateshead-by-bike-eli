@@ -717,6 +717,7 @@ def get_posts(user_id=None):
         if postCount > 10:
             put_html(f'<p class="text-center">View more posts</p>')
 
+
 #rating features by Myat Thiri Khant
 def add_rating(post_id):
     """
@@ -739,6 +740,7 @@ def add_rating(post_id):
                   close_popup])], closable=True)
 
 
+# this function is for saving the rating made on a parking post
 def save_rate(post_id):  # saving the rating details to the database
     global valid_user
 
@@ -746,11 +748,11 @@ def save_rate(post_id):  # saving the rating details to the database
     rate_levels = pin.rateLevels
     comment = pin.comment
 
-    if rate_levels is None:
+    if rate_levels is None: # if user does not select any ratings
         toast('Cannot rate without selecting any ratings.',
               position='center', color='#2188ff', duration=5)
         return
-
+    # Get user ID
     if valid_user is None:
         user_id = None
     else:
@@ -766,7 +768,6 @@ def save_rate(post_id):  # saving the rating details to the database
     close_popup()
     toast('Rating saved successfully!', position='center', color='#2188ff', duration=6)
 
-    # print("===============", get_avg_rating(post_id), "===============") # for testing
     main()
     scroll_to(f'post-{post_id}', position='middle')  # scroll to the post after rating
 
@@ -913,7 +914,7 @@ def delete_post(post_id):
     ], onclick=[confirm_delete, post_feeds if valid_user.role_id == 4 else own_post_feeds])
 
 
-#average rating function by Myat Thiri Khant
+# average rating function by Myat Thiri Khant
 def get_avg_rating(post_id):
     """
     Function to get the average rating of a post
@@ -2079,6 +2080,7 @@ def police_manage_notifications():
 
 # MYAT THIRI KHANT'S IMPLEMENTATION STARTS HERE
 
+# COUNCIL STAFF Create announcement form ### --> when user clicks 'Announce an Update' button
 def council_create_update():
     clear()
     global valid_user
@@ -2092,15 +2094,17 @@ def council_create_update():
         input('Title', name='title', required=True),
         textarea('Detailed Description', name='content', required=True),
         select('Improvement Type', options=['Bike Parking Facilities', 'Cycling Routes',
-                'Safety Enhancements', 'Maintenance'], name='improvementType', multiple=False),
+                                            'Safety Enhancements', 'Maintenance'], name='improvementType',
+               multiple=False),
         select('Status', options=['Active', 'Archived'], name='status', multiple=False),
         actions('', [
             {'label': 'Announce', 'value': 'announce', 'type': 'submit'},
             {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
         ], name='announcement_actions')
     ]
-
+    #the user input from the form will be passed to announcementData
     announcementData = input_group('Post an announcement', createAnnouncementForm, cancelable=True)
+
     #when the council staff clicks either 'cancel' or 'announce' buttons
     try:
         if announcementData is None or announcementData['announcement_actions'] == 'cancel':
@@ -2108,16 +2112,20 @@ def council_create_update():
             raise ValueError('Announcement creation cancelled')
         if announcementData['announcement_actions'] == 'announce':
             with Session() as sesh:
+                #user input wil be added to database only if 'announce' button is clicked
                 new_announcement = Notification(user_id=get_user_id(),
                                                 by_role_id=get_role_id(),
                                                 title=announcementData['title'],
                                                 content=announcementData['content'],
                                                 date_time=datetime.now(),
+                                                #current date and time of announcement created
                                                 category=announcementData['improvementType'],
                                                 status=announcementData['status'],
                                                 )
                 sesh.add(new_announcement)
                 sesh.commit()
+    # as the information of an announcement is all string datatype and the only validation necessary is for
+    # improvement type which is why select field is used so there is no need for further validation
     except ValueError as ve:
         toast(f'{str(ve)}', color='error')
     except SQLAlchemyError:
@@ -2128,6 +2136,8 @@ def council_create_update():
         get_announcement(valid_user.id)
         notification_feeds()
 
+
+# to edit the announcements (only for the owner/creator)### --> when owner/creator clicks 'Edit' button
 def edit_announcement(notification_id):
     clear()
     global valid_user
@@ -2169,12 +2179,15 @@ def edit_announcement(notification_id):
     finally:
         notification_feeds()
 
+
+# to delete the announcements (only for the owner/creator)### --> when owner/creator clicks 'Delete' button
 def delete_announcement(anncouncement_id):
     clear()
     global valid_user
     generate_header()
     generate_nav()
 
+    # function is for the confirmation of the deletion when user clicks 'Yes, confirm deletion' button
     def confirm_delete():
         with Session() as sesh:
             announcement = sesh.query(Notification).filter_by(id=anncouncement_id).first()
@@ -2184,6 +2197,8 @@ def delete_announcement(anncouncement_id):
             sesh.commit()
         toast(f'Announcement "{announcement.title}" has been deleted', color='success')
         notification_feeds()
+
+    # option to retreat the deletion when user clicks 'Cancel' button and showing a warning message
     with Session() as sesh:
         announcement = sesh.query(Notification).filter_by(id=anncouncement_id).first()
         put_warning(put_markdown(f'''## Warning!   
@@ -2192,7 +2207,12 @@ def delete_announcement(anncouncement_id):
             {'label': 'Yes, confirm deletion', 'value': 'confirm', 'color': 'danger'},
             {'label': 'Cancel', 'value': 'cancel', 'color': 'secondary'}
         ], onclick=[confirm_delete, notification_feeds])
+        #when user clicks 'Yes, confirm deletion' button, confirm_delete function will be called
+        #when user clicks 'Cancel' button, Notification feeds will be shown
 
+
+# to see only the announcements created by the logged-in Council User###
+# --> when owner/creator clicks 'My Announcements' button
 def council_manage_updates():
     clear()
     scroll_to('ROOT', position='top')
@@ -2204,7 +2224,10 @@ def council_manage_updates():
     put_buttons(['Back to Announcements'], onclick=[notification_feeds]).style('float:right; margin-top: 12px;')
     put_html('<h2>My Announcements</h2>')
     get_announcement(valid_user.id)
+    # the id of the user is passed along here to get the announcements created by the user
 
+
+# function to get the announcements created by the user and display them on "My Announcements" page
 def get_announcement(user_id):
     global valid_user
     with Session() as sesh:
@@ -2216,7 +2239,7 @@ def get_announcement(user_id):
             print("No user ID")
             announcements = sesh.query(Notification).filter_by(notification_feeds.id).all()
 
-        if len(announcements) == 0:
+        if len(announcements) == 0:  #if the user hasn't created any announcements
             put_html('<p class="lead text-center">There is no announcements</p>')
             return
         for announcement in announcements:
@@ -2230,13 +2253,15 @@ def get_announcement(user_id):
                 ''').style('margin-bottom: 10px; border: 1px solid black; padding: 10px; background-color: #e7ecef;')
                 if user_id is not None or (user_id is None and
                                            valid_user is not None and announcement.user_id == valid_user.id):
-                    put_buttons([
+                    put_buttons([  #the edit and delete function are used here
                         {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
                         {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                    ], onclick=[partial(edit_announcement, announcement.id), partial(delete_announcement, announcement.id)], small=True)
+                    ], onclick=[partial(edit_announcement, announcement.id),
+                                partial(delete_announcement, announcement.id)], small=True)
                     put_html('<br>')
                 else:
                     ''
+
 
 # all other code of MTK code should be placed here
 
