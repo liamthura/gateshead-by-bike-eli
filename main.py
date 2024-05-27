@@ -1049,7 +1049,7 @@ def get_threads(user_id=None):
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
+                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.asc()).all()
                 # print(len(comments))
                 if len(comments) != 0:  # show if there are comments in the thread
                     put_html('<p class="h5 fw-bolder">Comments</p>')
