@@ -984,7 +984,7 @@ def own_forum_feeds():
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'}
         ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Community Forum</h2>')
+    put_html('<h2>My Forum Threads</h2>')
 
     get_threads(valid_user.id)
 
