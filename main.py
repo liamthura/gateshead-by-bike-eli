@@ -2059,12 +2059,17 @@ def respond_chat(crime_id):
 # KHANT THURA'S IMPLEMENTATION STARTS HERE
 
 def police_create_notification(pre_data=None):
+    """
+    Function to allow police staff to post notifications regarding public safety, crime alerts, etc.
+    :param pre_data: form data to pre-fill the form fields, used for editing notifications
+    :return:
+    """
     clear()
 
     def post_notification(data):
         try:
             with Session() as sesh:
-                new_notification = Notification(user_id=valid_user.id, title=notification_data['title'].strip(),
+                new_notification = Notification(user_id=valid_user.id, title=notification_data['title'].strip(),  # strip the leading and trailing spaces using .strip()
                                                 category=notification_data['category'].strip(),
                                                 content=notification_data['content'].strip(),
                                                 date_time=datetime.now(), by_role_id=3,
@@ -2080,7 +2085,7 @@ def police_create_notification(pre_data=None):
             notification_feeds()
 
     global valid_user
-    if valid_user is None or valid_user.role_id != 3:
+    if valid_user is None or valid_user.role_id != 3:  # if the user is not a police staff
         toast('You do not have permission to post notifications', color='warning')
         main()
         return
@@ -2092,7 +2097,8 @@ def police_create_notification(pre_data=None):
 
     notification_fields = [
         input('Title', name='title', required=True, maxlength=50,
-              value=pre_data["title"] if pre_data is not None else "", validate=lambda c: f'Must be more then 4 characters and less than 50 characters. {len(c.strip())}/50' if len(c.strip()) < 4 or len(c.strip()) > 50 else None),
+              value=pre_data["title"] if pre_data is not None else "",
+              validate=lambda c: f'Must be more then 4 characters and less than 50 characters. {len(c.strip())}/50' if len(c.strip()) < 4 or len(c.strip()) > 50 else None),
         select('Category', ['Emergency Alert',
                             'Crime Alert',
                             'Public Safety Announcement',
@@ -2104,12 +2110,14 @@ def police_create_notification(pre_data=None):
                                                required=True) if c == 'Other' else input_update('other', hidden=True,
                                                                                                 required=False),
                value=pre_data["category"] if pre_data is not None and pre_data["category"] != "Other" else ""),
-        input('', name='other', required=False, hidden=True, placeholder='Please specify', validate=lambda c: f'No more then 30 characters. {len(c.strip())}/30' if len(c.strip()) > 30 else None,
+        input('', name='other', required=False, hidden=True, placeholder='Please specify',
+              validate=lambda c: f'No more then 30 characters. {len(c.strip())}/30' if len(c.strip()) > 30 else None,
               value=pre_data["category"] if pre_data is not None and pre_data['other'] is not None else None),
         textarea('Content', name='content', required=True, wrap='hard', rows=5,
                  value=pre_data["content"] if pre_data is not None else ""),
         select('Status', ['Active', 'Archived'], name='status', required=True,
-               value=pre_data["status"] if pre_data is not None else "Active", help_text='Active notifications are visible to all users. Archived notifications are only visible to you.'),
+               value=pre_data["status"] if pre_data is not None else "Active",
+               help_text='Active notifications are visible to all users. Archived notifications are only visible to you.'),
         actions('', [
             {'label': 'Post Notification', 'value': 'post', 'type': 'submit'},
             {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
@@ -2125,6 +2133,7 @@ def police_create_notification(pre_data=None):
     if notification_data['notification_actions'] == 'post':
         if notification_data['category'] == 'Other' and notification_data['other'] is not None:
             notification_data['category'] = notification_data['other'].title()
+        # preview the notification before posting using popup
         popup('Notification Preview', [
             put_html(f'''
             <div class="card p-2">
@@ -2162,9 +2171,18 @@ def police_create_notification(pre_data=None):
 
 
 def police_manage_notifications():
+    """
+    Function to allow police staff to manage their own notifications.
+    :return:
+    """
     clear()
 
     def change_notification_status(notification_id):
+        """
+        Function to change the status of the notification between Active and Archived.
+        :param notification_id: ID of the notification to change status
+        :return:
+        """
         with Session() as sesh:
             selected_notification = sesh.query(Notification).filter_by(id=notification_id).first()
             if selected_notification.status == 'Active':
@@ -2177,11 +2195,20 @@ def police_manage_notifications():
         police_manage_notifications()
 
     def delete_notification(notification_id):
+        """
+        Function to delete the notification.
+        :param notification_id: ID of the notification to be deleted
+        :return:
+        """
         clear()
         generate_header()
         generate_nav()
 
         def confirm_delete():
+            """
+            Function to confirm the deletion of the notification from database.
+            :return:
+            """
             with Session() as sesh:
                 selected_notification = sesh.query(Notification).filter_by(id=notification_id).first()
                 sesh.delete(selected_notification)
@@ -2198,7 +2225,7 @@ def police_manage_notifications():
         ], onclick=[confirm_delete, police_manage_notifications])
 
     global valid_user
-    if valid_user is None or valid_user.role_id != 3:
+    if valid_user is None or valid_user.role_id != 3:  # if the user is not a police staff
         toast('You do not have permission to manage notifications', color='warning')
         main()
         return
@@ -2209,7 +2236,7 @@ def police_manage_notifications():
     put_button('Post a Notification', onclick=police_create_notification).style('float:right; margin-top: 12px;')
     put_html('<h2>My Notification</h2>')
 
-    notification_table_data = []
+    notification_table_data = []  # initialise the notification table data
     with Session() as sesh:
         notifications = sesh.query(Notification).order_by(Notification.id.desc()).filter_by(user_id=valid_user.id).all()
         notificationCount = len(notifications)
@@ -2227,7 +2254,9 @@ def police_manage_notifications():
                 put_buttons([
                     {'label': 'Change Status', 'value': 'change_status', 'color': 'info'},
                     {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
-                ], onclick=[partial(change_notification_status, notification.id), partial(delete_notification, notification.id)]).style("display: flex; justify-content: start; gap: 5px; flex-direction: column;")
+                ], onclick=[partial(change_notification_status, notification.id),
+                            partial(delete_notification, notification.id)]).style(
+                    "display: flex; justify-content: start; gap: 5px; flex-direction: column;")
             ])
 
         put_table(notification_table_data, header=[
@@ -2238,6 +2267,7 @@ def police_manage_notifications():
             'Status',
             'Action'
         ])
+
 
 # all other code of KT code should be placed here
 
