@@ -2077,45 +2077,63 @@ def police_manage_notifications():
 # MYAT THIRI KHANT'S IMPLEMENTATION STARTS HERE
 
 def council_create_update():
-    #this is the page for council staff site management
     clear()
-    scroll_to('ROOT', position='top')
     global valid_user
+
     generate_header()
     generate_nav()
-    if valid_user is not None and get_role_id(valid_user.id) == 4:
-        put_buttons([
-            {'label': 'Create an announcement', 'value': 'create_announcement', 'color': 'success'},
-            {'label': 'My announcements', 'value': 'council_manage_updates', 'color': 'info'},
-        ], onclick=[create_announcement, council_manage_updates()]).style('float:right; margin-top: 12px;')
+    put_buttons(['Back to Announcements'], onclick=[notification_feeds]).style('float:right; margin-top: 12px;')
+    put_html('<h2>Post an Announcement</h2>')
+
+    createAnnouncementForm = [
+        input('Title', name='title', required=True),
+        textarea('Detailed Description', name='content', required=True),
+        select('Improvement Type', options=['Bike Parking Facilities', 'Cycling Routes',
+                                            'Safety Enhancements', 'Maintenance'], name='improvementType',
+               multiple=False),
+        select('Status', options=['Active', 'Archived'], name='status', multiple=False),
+        actions('', [
+            {'label': 'Announce', 'value': 'announce', 'type': 'submit'},
+            {'label': 'Cancel', 'value': 'cancel', 'type': 'cancel', 'color': 'warning'}
+        ], name='announcement_actions')
+    ]
+
+    announcementData = input_group('Post an announcement', createAnnouncementForm, cancelable=True)
+    #when the council staff clicks either 'cancel' or 'announce' buttons
+    try:
+        if announcementData is None or announcementData['announcement_actions'] == 'cancel':
+            clear()
+            raise ValueError('Announcement creation cancelled')
+        if announcementData['announcement_actions'] == 'announce':
+            with Session() as sesh:
+                new_announcement = Notification(user_id=get_user_id(),
+                                                by_role_id=get_role_id(),
+                                                title=announcementData['title'],
+                                                content=announcementData['content'],
+                                                date_time=datetime.now(),
+                                                category=announcementData['improvementType'],
+                                                status=announcementData['status'],
+                                                )
+                sesh.add(new_announcement)
+                sesh.commit()
+    except ValueError as ve:
+        toast(f'{str(ve)}', color='error')
+    except SQLAlchemyError:
+        toast('An error occurred', color='error')
     else:
-        '''if the user is not a council staff'''
+        toast('Announcement posted successfully', color='success')
+    finally:
+        get_announcement(valid_user.id)
+        notification_feeds()
 
-    put_html('<h2>Announcements</h2>')
-    get_announcements(user_id=None)
-
-def get_announcements():
-    pass
-
-@use_scope('ROOT', clear=True)
-def view_own_announcements():
-    clear()
-    global valid_user
-
-    generate_header()
-    generate_nav()
-    put_html('<h2>My Announcements</h2>')
-    get_announcements(valid_user.id)
-
-
-def edit_announcement(announcement_id):
+def edit_announcement(notification_id):
     clear()
     global valid_user
     generate_header()
     generate_nav()
 
 
-def delete_announcement(announcement_id):
+def delete_announcement(anncouncement_id):
     clear()
     global valid_user
     generate_header()
@@ -2125,8 +2143,35 @@ def delete_announcement(announcement_id):
 def council_manage_updates():
     clear()
     scroll_to('ROOT', position='top')
-    put_html('<p class="lead center">This part can be found in Myat Thiri Khant\'s Individual Implementation Code.</p>')
+    clear()
+    global valid_user
 
+    generate_header()
+    generate_nav()
+    put_html('<h2>My Announcements</h2>')
+    get_announcement(valid_user.id)
+
+def get_announcement(user_id):
+    global valid_user
+    with Session() as sesh:
+        if user_id is not None:
+            announcements = sesh.query(Notification).filter_by(user_id=user_id).all()
+        else:
+            announcements = sesh.query(Notification).filter_by(notification_feeds.id).all()
+
+        if len(announcements) == 0:
+            put_html('<p class="lead text-center">There is no announcements</p>')
+            return
+        for announcement in announcements:
+            with use_scope(f'announcement-{announcement.id}'):
+                if user_id is not None or (user_id is None and
+                                           valid_user is not None and announcement.user_id == valid_user.id):
+                    put_buttons([
+                        {'label': 'Edit', 'value': 'edit', 'color': 'primary'},
+                        {'label': 'Delete', 'value': 'delete', 'color': 'danger'}
+                    ], onclick=[partial(edit_announcement, announcement.id), partial(delete_announcement, announcement.id)], small=True)
+                else:
+                    ''
 
 # all other code of MTK code should be placed here
 
