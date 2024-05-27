@@ -1,39 +1,80 @@
 id,user_id,title,content,parent_id,date_time,up_votes,down_votes,flags
-1,1,test,test,,2024-05-22 05:02:51.857906,1,4,0
-2,1,How is it going?,I'm writing this to see if this works or not. I think it works very well loll I hope so!,,2024-05-22 05:32:38.847056,1,7,0
-3,2,Just testing with a new user account,Does the content change dynamically?,,2024-05-22 05:56:10.911625,3,4,0
-4,2,HHHEE,heheh,,2024-05-22 05:56:10.911625,3,5,1
-5,3,High rates of crime,There has been a high rate of theft near Eldon Square. Has anyone gone through really bad experience? Let us know!,,2024-05-22 07:01:54.925126,2,11,1
-6,1,Yayyy it's working,"hehehhehehehe happy
+1,1,Any thoughts on how the council's handling bike thief?,"Hey everyone,
 
-Edit thread is also working too!!!",,2024-05-22 07:26:05.829381,22,36,1
-8,4,I'm council staff whahahahah,"umm okay?Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irur
+I've been cycling around Gateshead for a few years now and have noticed an increase in bike thefts recently. I've had two friends who’ve had their bikes stolen this year alone. I'm wondering what everyone thinks about how the council is dealing with this issue. Are they doing enough? Could they improve their approach? Any suggestions on what we, as a community, can do to help?
 
-GOOOOD!",,2024-05-22 07:26:05.829381,31,12,2
-9,1,Comment by khantthura to thread: I'm council staff whahahahah,comment_data,8,2024-05-22 21:54:20.992801,0,0,0
-10,1,Comment by khantthura to thread: I'm council staff whahahahah,comment_data,8,2024-05-22 21:57:50.340453,0,0,0
-11,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: test",test comment,1,2024-05-22 22:13:13.818605,0,0,0
-12,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: test",test,1,2024-05-22 22:14:15.749991,0,0,0
-13,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm council staff whahahahah",test,8,2024-05-22 22:17:02.673561,0,0,0
-14,3,"Comment by {'username': 'policeman', 'display_name': 'FBI'} to thread: High rates of crime",testing,5,2024-05-23 01:07:37.689094,0,0,0
-15,3,"Comment by {'username': 'policeman', 'display_name': 'FBI'} to thread: I'm council staff whahahahah",test,8,2024-05-23 01:08:15.844903,0,0,0
-16,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: High rates of crime",test,5,2024-05-23 01:15:05.187185,0,0,0
-17,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: Yayyy it's working",test,6,2024-05-23 01:15:21.015662,0,0,0
-18,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: Yayyy it's working",test,6,2024-05-23 01:15:29.585855,0,0,0
-19,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: How is it going?",test,2,2024-05-23 01:15:43.100373,0,0,0
-20,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: HHHEE",test,4,2024-05-23 01:17:20.439024,0,0,0
-21,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: How is it going?",test,2,2024-05-23 01:18:10.018219,0,0,0
-22,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm council staff whahahahah",test,8,2024-05-23 01:46:24.692733,0,0,0
-23,1,"I'm so tired, I'm going to sleep!!","This is so fun, what's the point of not enjoying what you do heheh",,2024-05-23 06:06:20.747432,1,1,0
-24,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm so tired, I'm going to sleep!!",I wanna add more features but time does not allow,23,2024-05-23 06:06:46.975207,0,0,0
-25,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm so tired, I'm going to sleep!!",Go to sleeeeeeep!,23,2024-05-23 06:07:05.930379,0,0,0
-26,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm so tired, I'm going to sleep!!","currently it allows unlimited and unmonitored votes by one user, which in real world application is impractical. we'll need to restructure and make changes to the database to make that possible. which I will prolly look into after!",23,2024-05-23 06:09:16.791207,0,0,0
-27,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm so tired, I'm going to sleep!!",<b>Bold!<b>,23,2024-05-23 06:09:41.030802,0,0,0
-28,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: I'm so tired, I'm going to sleep!!","lol apparently the text are rendered unfiltered html, which means if used wisely, <span class=""h3"">we can put html elements here, but if not used wisely, this is a <b>security vulnerability</b></span> and will be prone to SQL and web attacks!!!",23,2024-05-23 06:12:10.623210,0,0,0
-29,5,Suggestion for bike spots,"We should create more public spaces for bike storage, how do you guys think?",,2024-05-23 06:18:51.203565,4,3,0
-30,4,"Comment by {'username': 'counciluser', 'display_name': 'Taxman'} to thread: Suggestion for bike spots",Wow good idea! We will look into this :),29,2024-05-23 06:19:53.464561,0,0,0
-31,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: Suggestion for bike spots","okay
-",29,2024-05-23 16:29:01.410146,0,0,0
-32,4,Ello mate,Ello!,,2024-05-24 04:16:34.599872,0,0,0
-33,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: Suggestion for bike spots","n.,jhkhhkjhuhk",29,2024-05-24 14:25:39.596744,0,0,0
-34,1,"Comment by {'username': 'khantthura', 'display_name': 'Khant Thura'} to thread: Ello mate",good,32,2024-05-25 01:41:30.996443,0,0,0
+Looking forward to hearing your thoughts!",,2024-05-27 03:16:26.016879,5,1,0
+2,5,Best and Worst Bike Parking Spots in Gateshead?,"Hi all,
+
+I'm trying to find some good spots to park my bike around Gateshead and wanted to get your thoughts. Where have you found the best and worst bike parking spots in town? Secure, convenient, and ideally covered options would be great to know about. Also, any places to avoid due to theft or lack of facilities?
+
+Thanks for your input!",,2024-05-27 03:27:53.331448,4,1,0
+3,5,Comment by liamthura to thread: Any thoughts on how the council's handling bike thief?,"Hey Average Biker,
+
+I totally agree with you. It feels like bike theft is getting out of control. I think the council should invest more in secure bike parking and maybe increase patrols in hotspots. Also, it would be great if they could set up more surveillance cameras in key areas.",1,2024-05-27 03:28:33.834608,0,0,0
+4,1,Comment by standarduser to thread: Any thoughts on how the council's handling bike thief?,"Good point, Liam. I also think the council could work more closely with the police. More coordinated efforts might help track down these thieves and deter them from targeting our community. Reporting tools on platforms like this one could also be more actively monitored and responded to.",1,2024-05-27 03:30:53.097486,0,0,0
+5,1,Comment by standarduser to thread: Best and Worst Bike Parking Spots in Gateshead?,"For the best parking spots, I'd recommend the bike racks near Gateshead Interchange. They're well-lit, usually have available spaces, and are covered. On the downside, avoid parking near the Trinity Square area. I've heard a few reports of theft there, and the racks are often overcrowded.",2,2024-05-27 03:34:42.382601,0,0,0
+6,6,Comment by pedalpusher to thread: Best and Worst Bike Parking Spots in Gateshead?,"I've found that the bike parking at Gateshead Library is pretty good. It's secure and there's always a spot available. However, stay away from the racks at the Central Station. They are often vandalized, and a friend of mine had their bike stolen from there last month.",2,2024-05-27 03:40:13.262588,0,0,0
+7,4,New Bike Parking Facilities Coming Soon!,"Hello Gateshead Cyclists,
+
+We are excited to announce that Gateshead Council is committed to improving cycling infrastructure across our town. As part of our ongoing efforts to support and encourage cycling, we will be installing new bike parking facilities in several key areas. Here are the planned updates:
+
+- Gateshead Interchange: Additional covered racks with security cameras.
+- Trinity Square: Increased number of racks and improved lighting.
+- Saltwell Park: New secure bike lockers for added safety.
+- Gateshead Library: Expanded bike parking area with better weather protection.
+- High Street West: Installation of secure bike cages with CCTV coverage.
+
+We would love to hear your feedback and suggestions on these plans. Are there any other locations you think need better bike parking? What features do you value most in bike parking facilities? Your input is crucial in helping us create a more bike-friendly Gateshead.
+
+Thank you for your continued support and enthusiasm for cycling!
+
+Best regards,
+Gateshead Council Cycling Team",,2024-05-27 03:42:01.314608,14,2,1
+8,5,Comment by liamthura to thread: New Bike Parking Facilities Coming Soon!,"Thank you for the update, Taxman! The new facilities sound great, especially the secure bike lockers at Saltwell Park. I would suggest considering more parking near the Quayside as well. It's a popular area for cyclists.",7,2024-05-27 03:44:04.499768,0,0,0
+9,5,Comment by liamthura to thread: Best and Worst Bike Parking Spots in Gateshead?,"Thank you all for your sharing, much appreciated! 👍",2,2024-05-27 03:45:27.033710,0,0,0
+10,5,Comment by liamthura to thread: Any thoughts on how the council's handling bike thief?,"Yeah totally! Hopefully, with enough support, we can get them to take more action on this issue.",1,2024-05-27 03:46:26.350874,0,0,0
+11,2,Reporting Bike Theft in Gateshead - How Effective is It?,"Hello fellow cyclists,
+
+As a power user of this platform, I've been actively reporting incidents of bike theft and vandalism around Gateshead. However, I’m curious about your experiences with the effectiveness of these reports. Have you noticed any improvements or responses from the police or council after reporting crimes through this platform?",,2024-05-27 03:58:47.495050,2,1,1
+12,6,Comment by pedalpusher to thread: Reporting Bike Theft in Gateshead - How Effective is It?,"I've had mixed experiences. Some reports were acknowledged quickly, but others took longer. Communication with the police was generally good, and they did follow up with updates. Unfortunately, my stolen bike wasn't recovered, but vandalism in my area has decreased since my reports.",11,2024-05-27 04:00:26.766548,0,0,0
+13,1,Comment by standarduser to thread: Reporting Bike Theft in Gateshead - How Effective is It?,"Thanks for starting this thread. As a standard user, I wanted to share my perspective. I reported a case of bike vandalism a few months ago. The response from the police was pretty quick—they got back to me within a day. However, I didn’t hear much afterward, and there wasn't a follow-up to inform me of any actions taken or any increase in patrols.
+
+However, let's keep pushing for these improvements. I believe our collective efforts can make a significant difference.",11,2024-05-27 04:02:58.966704,0,0,0
+14,3,Protect Your Bike: Tips from Northumbria Police,"Hey Cyclists,
+
+We're here to help keep your bikes safe. Follow these tips:
+
+- Lock It Right: Use strong locks and secure both the frame and wheels to a solid object.
+- Choose Wisely: Park in well-lit, busy areas with surveillance cameras.
+- Register Your Ride: Sign up with a national bike registry for better chances of recovery if stolen.
+- Make It Unique: Personalize your bike with identifiable marks or stickers.
+- Stay Alert: Report any suspicious activity around bike parking areas immediately.
+- Remember, together we can make Gateshead safer for cycling!
+
+Stay vigilant,
+
+Northumbria Police Department, Proud to Protect",,2024-05-27 04:05:16.717821,5,2,0
+15,3,Comment by policeuser to thread: Reporting Bike Theft in Gateshead - How Effective is It?,We're working 24/7 to make are all the reports are processed accordingly. Please use emergency reporting features if your case requires urgency. Call the police at 0191 283 7294,11,2024-05-27 04:07:19.767275,0,0,0
+16,3,Comment by policeuser to thread: Any thoughts on how the council's handling bike thief?,"Hey, we'll look into this thank you!",1,2024-05-27 04:07:49.335122,0,0,0
+17,2,Comment by poweruser to thread: Protect Your Bike: Tips from Northumbria Police,"Thank you for these tips. They’re really helpful! I didn’t know about the national bike registry, so I’ll definitely look into that. Appreciate all your efforts in keeping us safe.",14,2024-05-27 04:09:52.999836,0,0,0
+18,4,Comment by counciluser to thread: Protect Your Bike: Tips from Northumbria Police,"Thank you for sharing these valuable tips with our cycling community. As representatives of Gateshead Council, we fully support efforts to enhance bike security and reduce theft. We encourage all cyclists to take these precautions seriously and to report any suspicious activity promptly. Your proactive approach plays a vital role in safeguarding our community.",14,2024-05-27 04:10:36.756826,0,0,0
+19,1,Comment by standarduser to thread: Protect Your Bike: Tips from Northumbria Police,Cheers!,14,2024-05-27 04:10:55.198935,0,0,0
+20,1,Hidden Bike Spots in Gateshead: Share Your Secret Gems!,"Let's talk about hidden bike spots in Gateshead! We all have those secret gems—those tucked-away corners, scenic routes, or cozy cafes with bike-friendly vibes—that make our rides extra special.
+
+Whether it's a secluded park bench overlooking the river, a charming local bakery with the best pastries, or a lesser-known trail that feels like a hidden paradise, let's share our favorite hidden bike spots with each other.
+
+Can't wait to hear about your secret spots!
+
+Happy riding!",,2024-05-27 04:12:02.628247,10,3,0
+21,5,Comment by liamthura to thread: Hidden Bike Spots in Gateshead: Share Your Secret Gems!,"Saltwell Park Café - This little gem is nestled in Saltwell Park. It's got a chill vibe, killer coffee, and some seriously drool-worthy cakes. Perfect for a pit stop mid-ride!",20,2024-05-27 04:13:11.561998,0,0,0
+22,2,Comment by poweruser to thread: Hidden Bike Spots in Gateshead: Share Your Secret Gems!,Head up to Beacon Hill for some epic views of Gateshead. It's the perfect spot to catch a killer sunset or just kick back and take it all in.,20,2024-05-27 04:13:50.562691,0,0,0
+23,7,"My Stolen Bike and Ignored CCTV. Do Better, Gateshead Council!","Yesterday, I parked my bike in what turned out to be a dodgy spot. No excuses there, I know better. But what really burns me up is how the council handled it—or rather, didn't.
+
+After my bike got swiped, I reached out to them about checking the CCTV footage in the area. You know what I got? Radio silence. Not a single response. How can they be so ignorant?
+
+I get it, my bike wasn't locked up like Fort Knox, but that doesn't excuse their lack of action. We pay taxes for these services, right? So why are they so quick to ignore us when we need help?
+
+It's not just about my bike—it's about holding our local authorities accountable. We deserve better than this. Has anyone else experienced a similar run-around from the council?",,2024-05-27 04:24:02.587760,1,4,3
+24,5,"Comment by liamthura to thread: My Stolen Bike and Ignored CCTV. Do Better, Gateshead Council!","Sorry about your bike. While it's frustrating, we've got to remember to lock up securely. The council's response might be limited—they can't control everything. Let's stay vigilant and take extra precautions next time.",23,2024-05-27 04:26:48.481875,0,0,0
+25,1,"Comment by standarduser to thread: My Stolen Bike and Ignored CCTV. Do Better, Gateshead Council!","Yeah, let's not blame the council for your carelessness. I'm sure this is a general concern, but us bikers also need to be aware of such stuff!",23,2024-05-27 04:27:54.405446,0,0,0
