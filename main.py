@@ -2240,7 +2240,7 @@ def police_manage_notifications():
     with Session() as sesh:
         notifications = sesh.query(Notification).order_by(Notification.id.desc()).filter_by(user_id=valid_user.id).all()
         notificationCount = len(notifications)
-        if notificationCount == 0:
+        if notificationCount == 0:  # if there is no notification
             put_html('<p class="lead text-center">You have not posted any notifications</p>')
             return
         for notification in notifications:
