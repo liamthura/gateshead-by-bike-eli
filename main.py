@@ -1009,7 +1009,7 @@ def own_forum_feeds():
             {'label': 'Create a new thread', 'value': 'create_thread', 'color': 'success'},
             {'label': 'All threads', 'value': 'view_all_threads', 'color': 'info'}
         ], onclick=[create_thread, forum_feeds]).style('float:right; margin-top: 12px;')
-    put_html('<h2>Community Forum</h2>')
+    put_html('<h2>My Forum Threads</h2>')
 
     get_threads(valid_user.id)
 
@@ -1074,7 +1074,7 @@ def get_threads(user_id=None):
                     put_column([threadBtnGroup]).style('justify-content: end;')
                 ])
 
-                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.desc()).all()
+                comments = sesh.query(Thread).filter_by(parent_id=thread.id).order_by(Thread.id.asc()).all()
                 # print(len(comments))
                 if len(comments) != 0:  # show if there are comments in the thread
                     put_html('<p class="h5 fw-bolder">Comments</p>')
