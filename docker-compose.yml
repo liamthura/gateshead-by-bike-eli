@@ -6,8 +6,13 @@ services:
     ports:
       - "3000:3000"
     # Optional: Uncomment the volumes section below to persist the SQLite database
+    # Note: Using a named volume is recommended for database persistence
     # volumes:
-    #   - ./data:/app
+    #   - gateshead-data:/app
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+
+# Uncomment the volumes section below if you want to use named volumes for persistence
+# volumes:
+#   gateshead-data:

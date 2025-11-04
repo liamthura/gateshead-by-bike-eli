@@ -45,16 +45,19 @@ The application will be accessible at `http://localhost:8080`
 
 ### With Volume for Persistent Data
 
-To persist the SQLite database across container restarts:
+To persist the SQLite database across container restarts, use a named Docker volume:
 
 ```bash
+docker volume create gateshead-data
 docker run -d -p 3000:3000 \
-  -v $(pwd)/data:/app \
+  -v gateshead-data:/app \
   --name gateshead-by-bike \
   gateshead-by-bike
 ```
 
-This mounts a local `data` directory to preserve the `gbb-eli.db` database file.
+This creates and mounts a named volume to preserve the `gbb-eli.db` database file and uploaded data.
+
+**Note:** The entire `/app` directory is mounted to preserve the runtime-modified main.py and database state. The application modifies main.py at startup to configure network binding for Docker containers.
 
 ## Managing the Container
 
@@ -181,6 +184,24 @@ For production deployments:
 3. Implement proper authentication and authorization
 4. Use HTTPS/TLS encryption
 5. Keep the Docker image and dependencies updated
+
+## Technical Notes
+
+### Network Binding Configuration
+
+The application's main.py file is configured to bind to `localhost` by default. For Docker containers to accept external connections, the Dockerfile uses a runtime modification to change the host binding to `0.0.0.0`. This approach was chosen to:
+- Avoid modifying the working source code
+- Maintain compatibility with local development
+- Enable Docker deployment without code changes
+
+For production deployments, consider updating main.py to use environment variables for host configuration.
+
+### Database Persistence
+
+The SQLite database (`gbb-eli.db`) is created at runtime from CSV seed data. When using volumes for persistence:
+- The entire `/app` directory is mounted to preserve both the database and runtime modifications
+- Initial data is loaded from CSV files only on first run
+- Subsequent runs use the persisted database
 
 ## Support
 
