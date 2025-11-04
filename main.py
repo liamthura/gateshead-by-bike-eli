@@ -2308,4 +2308,4 @@ def main():
 
 
 if __name__ == '__main__':
-    start_server(main, port=8080, host='localhost', debug=True)
+    start_server(main, port=3000, host='hg4oc4cwsw04c0wows8kw0k0.thuradev.qzz.io', debug=True)
