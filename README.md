@@ -2,6 +2,7 @@
 _This repo is to enable collaborative coding for Gateshead By Bike Python Web App._
 ***
 [Link to Assignment PDF](https://livenorthumbriaac-my.sharepoint.com/:b:/g/personal/w22048419_northumbria_ac_uk/ESzDXn3xTwtNrN6vR6X3SJYBqKMFbeBoKW4EESmId6kCkw?e=dZaQak)
+[Link to Finished Work Documentation](https://filedn.com/l7MoJ9O3yxzYHH8mSYBkrjH/User%20Guide%20to%20Gateshead%20by%20Bike.pdf)
 
 ## Group Work
 ### Question 1: Produce an initial interface Log-in in Python. (15 Marks)
