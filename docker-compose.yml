@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    image: gateshead-by-bike:latest
+    container_name: gateshead-by-bike
+    ports:
+      - "3000:3000"
+    # Optional: Uncomment the volumes section below to persist the SQLite database
+    # volumes:
+    #   - ./data:/app
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1

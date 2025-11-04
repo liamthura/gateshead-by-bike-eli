@@ -96,34 +96,23 @@ docker rmi gateshead-by-bike
 
 ## Docker Compose (Optional)
 
-Create a `docker-compose.yml` file for easier management:
-
-```yaml
-version: '3.8'
-
-services:
-  web:
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app
-    restart: unless-stopped
-    container_name: gateshead-by-bike
-```
-
-Then run:
+A `docker-compose.yml` file is provided for easier management. To use it:
 
 ```bash
-# Start the application
-docker-compose up -d
+# Build and start the application
+docker compose up -d
 
 # Stop the application
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
+
+# Rebuild the image
+docker compose build
 ```
+
+**Note:** If you're using an older version of Docker, you may need to use `docker-compose` (with hyphen) instead of `docker compose` (space).
 
 ## Deployment to Web Servers
 
